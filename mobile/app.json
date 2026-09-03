@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "RouteWise",
+    "slug": "routewise",
+    "scheme": "routewise",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-location"
+    ],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "demo.routewise.app" },
+    "android": { "package": "demo.routewise.app" },
+    "extra": { "router": { "origin": false } }
+  }
+}

@@ -1,0 +1,11 @@
+employee_id,email,first_name,last_name,phone,license_expiration,endorsements,availability
+D-1001,driver@jefferson.demo,Maya,Chen,502-555-0101,2027-06-30,"CDL-B,S,P",weekday_am
+D-1002,jordan.ellis@jefferson.demo,Jordan,Ellis,502-555-0102,2026-11-15,"CDL-B,S,P",weekday_am
+D-1003,priya.nair@jefferson.demo,Priya,Nair,502-555-0103,2028-01-20,"CDL-B,S,P,wheelchair",weekday_am
+D-1004,luis.mora@jefferson.demo,Luis,Mora,502-555-0104,2027-03-12,"CDL-B,S,P",weekday_am
+D-1005,aisha.brooks@jefferson.demo,Aisha,Brooks,502-555-0105,2026-09-01,"CDL-B,S,P,wheelchair",weekday_am
+D-1006,noah.patel@jefferson.demo,Noah,Patel,502-555-0106,2028-04-18,"CDL-B,S,P",weekday_am
+D-1007,elena.vasquez@jefferson.demo,Elena,Vasquez,502-555-0107,2027-08-22,"CDL-B,S,P",weekday_am
+D-1008,caleb.nguyen@jefferson.demo,Caleb,Nguyen,502-555-0108,2026-12-05,"CDL-B,S,P,wheelchair",weekday_am
+D-1009,sofia.harris@jefferson.demo,Sofia,Harris,502-555-0109,2028-02-14,"CDL-B,S,P",weekday_am
+D-1010,marcus.owens@jefferson.demo,Marcus,Owens,502-555-0110,2027-05-30,"CDL-B,S,P",weekday_am

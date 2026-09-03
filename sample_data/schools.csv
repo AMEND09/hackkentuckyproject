@@ -1,0 +1,4 @@
+school_id,name,school_type,address,latitude,longitude,morning_bell,dismissal,is_active
+OAK-ES,Oakridge Elementary,elementary,"4100 Oakridge Ave, Louisville KY",38.2412,-85.7245,08:15,14:45,true
+RIV-MS,Riverside Middle,middle,"220 River Rd, Louisville KY",38.2680,-85.7610,08:00,15:00,true
+HIG-HS,Highland Academy,high,"1800 Highland Pkwy, Louisville KY",38.2290,-85.6920,07:45,14:30,true

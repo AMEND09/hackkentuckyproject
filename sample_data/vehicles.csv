@@ -1,0 +1,9 @@
+vehicle_number,license_plate,capacity,wheelchair_capacity,vehicle_type,status,depot_name
+BUS-01,KY-RW-101,72,0,standard,active,Central Transportation Yard
+BUS-02,KY-RW-102,72,0,standard,active,Central Transportation Yard
+BUS-03,KY-RW-103,48,2,accessible,active,Central Transportation Yard
+BUS-04,KY-RW-104,72,0,standard,active,Central Transportation Yard
+BUS-05,KY-RW-105,48,2,accessible,active,East Annex Yard
+BUS-06,KY-RW-106,72,0,standard,active,Central Transportation Yard
+BUS-07,KY-RW-107,54,1,accessible,active,East Annex Yard
+BUS-08,KY-RW-108,72,0,standard,spare,Central Transportation Yard

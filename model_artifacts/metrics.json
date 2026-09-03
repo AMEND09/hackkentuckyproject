@@ -1,0 +1,15 @@
+{
+  "p50_mae": 95.08,
+  "p90_coverage": 0.877,
+  "baseline_mae": 1063.88,
+  "improvement_over_baseline": 0.911,
+  "rmse": 165.73,
+  "classifier_precision": 0.976,
+  "classifier_recall": 0.998,
+  "classifier_f1": 0.987,
+  "classifier_roc_auc": 0.988,
+  "n_train": 17600,
+  "n_test": 4400,
+  "synthetic": true,
+  "disclaimer": "Trained only on fictional seeded segments. Not real operations data."
+}

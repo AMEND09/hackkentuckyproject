@@ -1,0 +1,59 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Python
+backend/.venv/
+backend/venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+
+# Django
+backend/staticfiles/
+backend/media/
+*.sqlite3
+
+# Node
+node_modules/
+web/dist/
+web/coverage/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+*.tsbuildinfo
+
+# ML artifacts (trained models are generated locally)
+model_artifacts/*.joblib
+model_artifacts/*.pkl
+model_artifacts/*.csv
+!model_artifacts/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+logs/
+!logs/.gitkeep
+rundev.log
+*.pid

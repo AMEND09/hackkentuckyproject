@@ -1,0 +1,17 @@
+student_id,first_name,last_name,grade,school_id,home_address,latitude,longitude,eligible,wheelchair,max_ride_minutes
+S-10001,Ava,Bennett,2,OAK-ES,"512 Maple Ct, Louisville KY",38.2471,-85.7312,true,false,
+S-10002,Leo,Kim,3,OAK-ES,"88 Birch Ln, Louisville KY",38.2388,-85.7180,true,false,
+S-10003,Mia,Santos,1,OAK-ES,"19 Cedar Way, Louisville KY",38.2520,-85.7115,true,true,40
+S-10004,Owen,Clark,4,OAK-ES,"270 Poplar Dr, Louisville KY",38.2355,-85.7358,true,false,
+S-10005,Zoe,Nguyen,5,OAK-ES,"44 Willow Rd, Louisville KY",38.2440,-85.7422,true,false,
+S-10006,Eli,Patel,2,OAK-ES,"901 Ash St, Louisville KY",38.2495,-85.7201,true,false,
+S-20001,Nora,Walsh,6,RIV-MS,"17 Harbor Ave, Louisville KY",38.2744,-85.7520,true,false,
+S-20002,Kai,Brooks,7,RIV-MS,"330 Dock St, Louisville KY",38.2612,-85.7705,true,false,
+S-20003,Lila,Ortiz,8,RIV-MS,"5 Canal Pl, Louisville KY",38.2790,-85.7658,true,true,50
+S-20004,Theo,Grant,6,RIV-MS,"812 Bluff Rd, Louisville KY",38.2655,-85.7488,true,false,
+S-20005,Ruby,Shah,7,RIV-MS,"41 Ferry Ln, Louisville KY",38.2718,-85.7742,true,false,
+S-30001,Jonah,Reed,9,HIG-HS,"1200 Summit Ave, Louisville KY",38.2344,-85.6802,true,false,
+S-30002,Ivy,Morales,10,HIG-HS,"77 Ridge Ct, Louisville KY",38.2218,-85.7015,true,false,
+S-30003,Asher,Cole,11,HIG-HS,"455 Parkview Dr, Louisville KY",38.2368,-85.6988,true,false,
+S-30004,Quinn,Diaz,12,HIG-HS,"9 Overlook Ter, Louisville KY",38.2240,-85.6855,true,true,55
+S-30005,Piper,Hughes,9,HIG-HS,"601 Crest Blvd, Louisville KY",38.2415,-85.7050,true,false,

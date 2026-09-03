@@ -1,0 +1,15 @@
+stop_id,name,address,latitude,longitude,approved,accessibility,safety_notes
+ST-A1,Maple Court Shelter,"510 Maple Ct, Louisville KY",38.2470,-85.7310,true,curb_cut,Residential side street
+ST-A2,Birch Lane Corner,"90 Birch Ln, Louisville KY",38.2386,-85.7178,true,none,Good sight lines
+ST-A3,Cedar Way Lot,"21 Cedar Way, Louisville KY",38.2518,-85.7113,true,ramp,Adjacent to park
+ST-A4,Poplar Drive Stop,"268 Poplar Dr, Louisville KY",38.2354,-85.7356,true,none,Watch morning traffic
+ST-A5,Willow Road Shelter,"46 Willow Rd, Louisville KY",38.2438,-85.7420,true,curb_cut,
+ST-B1,Harbor Avenue,"15 Harbor Ave, Louisville KY",38.2742,-85.7518,true,none,Near riverwalk
+ST-B2,Dock Street,"328 Dock St, Louisville KY",38.2610,-85.7703,true,ramp,
+ST-B3,Canal Place,"7 Canal Pl, Louisville KY",38.2788,-85.7656,true,curb_cut,Quiet cul-de-sac
+ST-B4,Bluff Road,"810 Bluff Rd, Louisville KY",38.2653,-85.7486,true,none,
+ST-C1,Summit Avenue,"1198 Summit Ave, Louisville KY",38.2342,-85.6800,true,none,Steep grade
+ST-C2,Ridge Court,"75 Ridge Ct, Louisville KY",38.2216,-85.7013,true,curb_cut,
+ST-C3,Parkview Drive,"453 Parkview Dr, Louisville KY",38.2366,-85.6986,true,ramp,Wheelchair-friendly
+ST-C4,Overlook Terrace,"11 Overlook Ter, Louisville KY",38.2238,-85.6853,true,none,
+ST-C5,Crest Boulevard,"599 Crest Blvd, Louisville KY",38.2413,-85.7048,true,curb_cut,
