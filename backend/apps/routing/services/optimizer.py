@@ -12,7 +12,7 @@ from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 
 from apps.districts.models import Depot, DistrictPolicy, School
 from apps.routing.models import Route, RoutePlan, RouteStop, RouteStopStudent
-from apps.routing.services.matrix import HaversineDemoProvider, cached_matrix
+from apps.routing.services.matrix import street_matrix
 from apps.transportation.models import BusStop, DriverProfile, Student, StudentStopAssignment, Vehicle
 from common.exceptions.errors import InfeasibleRouteError
 from common.utilities.geo import haversine_km
@@ -171,10 +171,20 @@ def generate_plan(plan: RoutePlan, vehicle_ids=None, driver_ids=None, weights=No
         (float(school.latitude), float(school.longitude)),
     ]
     hour = max(0, _t2s(school.morning_bell_time) // 3600 - 1)
-    raw = cached_matrix(district, points, HaversineDemoProvider(), departure_hour=hour)
+    raw = street_matrix(district, points, departure_hour=hour)
     from apps.machine_learning.services.predict import overlay_ml_matrix
 
-    matrix = overlay_ml_matrix(raw, points, hour=hour, mode=plan.optimization_mode)
+    # Per-node boarding demand so the ML overlay sees real segment features
+    # instead of neutral placeholders. Load is the fleet-average proxy since
+    # assignment happens in the solver below.
+    total_demand = sum(g["demand"] for g in stop_list)
+    avg_load = total_demand / max(1, min(len(vehicles), max(1, len(stop_list))))
+    node_meta = [{"boarding": 0, "wheelchair": 0, "load": 0}]
+    node_meta += [
+        {"boarding": g["demand"], "wheelchair": g["wc"], "load": avg_load} for g in stop_list
+    ]
+    node_meta.append({"boarding": 0, "wheelchair": 0, "load": avg_load})
+    matrix = overlay_ml_matrix(raw, points, hour=hour, mode=plan.optimization_mode, node_meta=node_meta)
 
     mode = plan.optimization_mode
     if mode == RoutePlan.Mode.FASTEST:
@@ -198,8 +208,11 @@ def generate_plan(plan: RoutePlan, vehicle_ids=None, driver_ids=None, weights=No
 
     demands = [0] + [g["demand"] for g in stop_list] + [0]
     wc_demands = [0] + [g["wc"] for g in stop_list] + [0]
+    from apps.routing.services.dwell import estimate_boarding_params
+
+    dwell = estimate_boarding_params(district)
     service = [0] + [
-        policy.default_boarding_seconds * g["demand"] + policy.wheelchair_boarding_seconds * g["wc"]
+        dwell["boarding_seconds"] * g["demand"] + dwell["wheelchair_seconds"] * g["wc"]
         for g in stop_list
     ] + [60]
 
@@ -311,6 +324,7 @@ def generate_plan(plan: RoutePlan, vehicle_ids=None, driver_ids=None, weights=No
         policy=policy,
         service=service,
         mode=mode,
+        dwell=dwell,
     )
 
 
@@ -331,6 +345,8 @@ def persist_solution(**kwargs) -> RoutePlan:
     policy = kwargs["policy"]
     service = kwargs["service"]
     mode = kwargs["mode"]
+    dwell = kwargs.get("dwell") or {}
+    risk_m = matrix.get("delay_risk") or []
 
     plan.routes.all().delete()
     used_driver_ids = set()
@@ -373,33 +389,38 @@ def persist_solution(**kwargs) -> RoutePlan:
         dist = 0.0
         p50 = 0
         p90 = 0
+        route_risk = 0.0
         prev = 0
         for n, _ in seq_nodes[1:]:
             dist += matrix["distance_km"][prev][n]
             p50 += matrix["p50_s"][prev][n] + service[n]
             p90 += matrix["p90_s"][prev][n] + service[n]
+            if risk_m:
+                route_risk = max(route_risk, float(risk_m[prev][n]))
             prev = n
         start_t = seq_nodes[0][1]
         arrive_t = seq_nodes[-1][1]
         ride = arrive_t - seq_nodes[1][1] if len(seq_nodes) > 1 else 0
         slack = max(0, _t2s(school.morning_bell_time) - policy.min_arrival_buffer_minutes * 60 - arrive_t)
-        # On-time: compare p90 arrival vs latest acceptable
+        # On-time: deadline bucket from P50/P90 vs bell, blended with the late
+        # classifier's worst-leg risk so learned risk moves the headline number.
         latest = _t2s(school.morning_bell_time) - policy.min_arrival_buffer_minutes * 60
         # Approximate on-time probability from p50/p90 vs deadline
         if p90 <= 0:
-            on_time = 0.95
+            bucket = 0.95
         else:
             # assume arrival ~ mix of p50/p90 from start
             p50_arr = start_t + p50
             p90_arr = start_t + p90
             if p90_arr <= latest:
-                on_time = 0.93
+                bucket = 0.93
             elif p50_arr <= latest:
-                on_time = 0.62
+                bucket = 0.62
             else:
-                on_time = 0.28
+                bucket = 0.28
+        on_time = round(0.5 * bucket + 0.5 * (1 - route_risk), 3)
         risk = round(min(100, (1 - on_time) * 80 + (15 if wc else 0) + max(0, ride - policy.max_student_ride_minutes * 60) / 60), 1)
-        factors = explain_risk(mode, on_time, ride, policy, slack, wc, dist)
+        factors = explain_risk(mode, on_time, ride, policy, slack, wc, dist, model_risk=route_risk)
         route = Route.objects.create(
             route_plan=plan,
             name=f"{school.school_code}-AM-{route_n:02d}",
@@ -519,14 +540,22 @@ def persist_solution(**kwargs) -> RoutePlan:
         "mode": mode,
         "matrix_provider": matrix.get("provider"),
         "ml_overlay": matrix.get("ml_overlay", False),
+        "dwell": dwell,
         "generated_at": timezone.now().isoformat(),
     }
     plan.save()
     return plan
 
 
-def explain_risk(mode, on_time, ride, policy, slack, wc, dist) -> list[dict]:
+def explain_risk(mode, on_time, ride, policy, slack, wc, dist, model_risk=None) -> list[dict]:
     factors = []
+    if model_risk is not None and model_risk > 0.4:
+        factors.append(
+            {
+                "code": "MODEL_LATE_RISK",
+                "text": f"The late classifier rates the riskiest leg at {model_risk:.0%} late (synthetic training data).",
+            }
+        )
     if on_time < 0.7:
         factors.append(
             {
