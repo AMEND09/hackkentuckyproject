@@ -14,7 +14,7 @@ export function StudentDetailPage() {
   if (!student) return <LoadingBlock rows={3} />;
   return (
     <div className="page-shell max-w-3xl">
-      <Link to="/students" className="back-link">
+      <Link to="/app/students" className="back-link">
         <ArrowLeft size={14} /> Students
       </Link>
       <div className="page-header">
@@ -50,7 +50,7 @@ export function StudentDetailPage() {
         />
       </div>
 
-      <Link className="btn-secondary inline-flex" to={`/schools/${student.school}`}>
+      <Link className="btn-secondary inline-flex" to={`/app/schools/${student.school}`}>
         Open school
       </Link>
     </div>

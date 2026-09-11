@@ -17,10 +17,10 @@ export interface User {
 }
 
 export const ROLE_HOME: Record<Role, string> = {
-  platform_admin: "/dashboard",
-  district_admin: "/dashboard",
-  planner: "/planner",
-  dispatcher: "/dispatch",
-  driver: "/drive",
-  guardian: "/dashboard",
+  platform_admin: "/app/dashboard",
+  district_admin: "/app/dashboard",
+  planner: "/app/planner",
+  dispatcher: "/app/dispatch",
+  driver: "/app/drive",
+  guardian: "/app/dashboard",
 };

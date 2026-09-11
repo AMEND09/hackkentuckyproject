@@ -2,7 +2,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./auth/AuthProvider";
 import { AppShell } from "./components/layout/AppShell";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SchoolsPage } from "./pages/SchoolsPage";
 import { StudentsPage } from "./pages/StudentsPage";
@@ -34,7 +36,7 @@ function Guard({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   }
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role) && user.role !== "platform_admin") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app/dashboard" replace />;
   }
   return <>{children}</>;
 }
@@ -42,16 +44,21 @@ function Guard({ children, roles }: { children: ReactNode; roles?: Role[] }) {
 export function App() {
   return (
     <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* Authenticated app — everything below requires a session */}
       <Route
-        path="/"
+        path="/app"
         element={
           <Guard>
             <AppShell />
           </Guard>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/app/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="schools" element={<SchoolsPage />} />
         <Route path="schools/:id" element={<SchoolDetailPage />} />
@@ -69,6 +76,9 @@ export function App() {
         <Route path="trips/:id" element={<TripDetailPage />} />
         <Route path="admin" element={<AdminPage />} />
       </Route>
+
+      {/* Unknown paths fall back to the landing page */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

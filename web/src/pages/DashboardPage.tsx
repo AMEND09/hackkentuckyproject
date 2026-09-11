@@ -83,7 +83,7 @@ export function DashboardPage() {
         <div className="lg:col-span-2 card overflow-hidden">
           <div className="px-5 pt-5 pb-2 flex items-center justify-between">
             <h2 className="font-bold text-ink">Live fleet</h2>
-            <Link to="/dispatch" className="link text-sm">
+            <Link to="/app/dispatch" className="link text-sm">
               Open dispatcher →
             </Link>
           </div>
@@ -98,7 +98,7 @@ export function DashboardPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={a.severity === "critical" ? "badge-bad" : "badge-warn"}>{a.severity}</span>
                   {a.trip ? (
-                    <Link className="link text-sm" to={`/drive/${a.trip}`}>
+                    <Link className="link text-sm" to={`/app/drive/${a.trip}`}>
                       {a.title}
                     </Link>
                   ) : (

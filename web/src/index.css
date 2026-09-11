@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,70 +6,92 @@
 
 :root {
   color-scheme: light;
-  --rw-bg: #f1f5f9;
-  --rw-surface: #ffffff;
-  --rw-text: #0f172a;
-  --rw-muted: #64748b;
-  --rw-border: rgba(15, 23, 42, 0.08);
-  --rw-accent: #2563eb;
+  --dart-bg: #f8fafc;
+  --dart-surface: #ffffff;
+  --dart-text: #111827;
+  --dart-muted: #64748b;
+  --dart-border: #e2e8f0;
+  --dart-primary: #2563eb;
 }
 
+/* Visible keyboard focus everywhere */
 *:focus-visible {
-  outline: 2px solid var(--rw-accent);
+  outline: 2px solid var(--dart-primary);
   outline-offset: 2px;
+  border-radius: 6px;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  @apply bg-canvas text-navy antialiased font-sans;
-  font-feature-settings: "ss01" on, "cv02" on;
+  @apply bg-canvas text-ink antialiased font-sans;
 }
 
-.btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-10;
+/* Tabular numerals for times, route numbers, and metrics */
+.tabular,
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
-.btn-primary {
-  @apply btn bg-navy text-white shadow-sm hover:bg-ink hover:shadow-md active:scale-[0.98];
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------- Buttons */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed min-h-10;
+}
+.btn-primary,
+.btn-route {
+  @apply btn bg-route text-white shadow-sm hover:bg-[#1d4ed8];
 }
 .btn-secondary {
-  @apply btn bg-white text-ink border border-slate/15 shadow-sm hover:bg-canvas hover:border-slate/25 active:scale-[0.98];
+  @apply btn bg-paper text-ink border border-line shadow-sm hover:bg-canvas hover:border-slate/30;
 }
-.btn-route {
-  @apply btn bg-route text-white shadow-sm hover:bg-azure active:scale-[0.98];
+.btn-dark {
+  @apply btn bg-navy text-white shadow-sm hover:bg-ink;
 }
 .btn-danger {
-  @apply btn bg-bad text-white hover:brightness-110 active:scale-[0.98];
+  @apply btn bg-bad text-white shadow-sm hover:brightness-110;
 }
 .btn-ghost {
-  @apply btn bg-transparent text-slate hover:bg-navy/5 hover:text-navy;
+  @apply btn bg-transparent text-slate hover:bg-canvas hover:text-ink;
 }
 
+/* ---------------------------------------------------------------- Surfaces */
 .card {
-  @apply bg-paper rounded-2xl shadow-card border border-navy/[0.06];
+  @apply bg-paper rounded-2xl border border-line shadow-card;
 }
 .card-body {
   @apply p-5 lg:p-6;
 }
 .card-hover {
-  @apply card card-body transition-all duration-200 hover:shadow-float hover:border-accent/20 hover:-translate-y-0.5;
+  @apply card card-body transition-all duration-150 hover:shadow-float hover:border-route/40;
 }
+/* Legacy .glass usages degrade to clean solid surfaces (no blur/gradient) */
 .glass {
-  @apply bg-white/90 backdrop-blur-xl border border-white/70 shadow-float rounded-2xl;
+  @apply bg-paper rounded-2xl border border-line shadow-card;
 }
 .glass-dark {
-  @apply bg-navy/90 backdrop-blur-xl border border-white/10 shadow-float rounded-2xl text-white;
+  @apply bg-navy text-white rounded-2xl border border-white/10 shadow-float;
 }
 
+/* ---------------------------------------------------------------- Forms */
 .input,
 .select {
-  @apply w-full rounded-xl border border-slate/15 bg-white px-3.5 py-2.5 text-sm text-navy min-h-10 shadow-sm transition placeholder:text-muted focus:border-sky/40 focus:ring-4 focus:ring-sky/10;
+  @apply w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-sm text-ink min-h-10 transition placeholder:text-muted focus:border-route focus:shadow-focus;
 }
 .label {
   @apply block text-xs font-semibold uppercase tracking-wide text-slate mb-1.5;
 }
+
+/* ---------------------------------------------------------------- Badges & statuses */
 .badge {
-  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+  @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold tracking-wide;
 }
 .badge-good {
   @apply badge bg-good/10 text-good border border-good/20;
@@ -81,42 +103,55 @@ body {
   @apply badge bg-bad/10 text-bad border border-bad/20;
 }
 .badge-neutral {
-  @apply badge bg-canvas text-slate border border-navy/10;
+  @apply badge bg-canvas text-slate border border-line;
+}
+.badge-info {
+  @apply badge bg-accent-soft text-route border border-route/20;
 }
 
+/* Status pill with leading dot — always paired with a readable label */
+.status {
+  @apply inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-semibold;
+}
+.status-dot {
+  @apply h-1.5 w-1.5 rounded-full;
+}
+
+/* ---------------------------------------------------------------- Page scaffolding */
 .page-shell {
-  @apply space-y-6 lg:space-y-8 animate-slide-up;
+  @apply space-y-6 lg:space-y-7 animate-slide-up;
 }
 .page-header {
   @apply flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between;
 }
 .page-title {
-  @apply text-2xl sm:text-3xl font-bold tracking-tight text-navy;
+  @apply font-display text-2xl sm:text-[28px] font-bold tracking-tight text-ink;
 }
 .page-sub {
   @apply text-sm text-slate leading-relaxed max-w-2xl mt-1;
 }
 .section-title {
-  @apply text-sm font-bold uppercase tracking-wider text-slate mb-3;
+  @apply text-[11px] font-semibold uppercase tracking-wider text-slate mb-3;
 }
 .link {
-  @apply font-semibold text-route hover:text-azure hover:underline underline-offset-2;
+  @apply font-semibold text-route hover:text-[#1d4ed8] hover:underline underline-offset-2;
 }
 .back-link {
-  @apply inline-flex items-center gap-1 text-sm font-medium text-slate hover:text-navy mb-2;
+  @apply inline-flex items-center gap-1 text-sm font-medium text-slate hover:text-ink mb-2;
 }
 
+/* ---------------------------------------------------------------- KPI */
 .kpi-card {
   @apply card card-body relative overflow-hidden;
 }
-.kpi-card::before {
-  content: "";
-  @apply absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-sky to-route rounded-l-2xl;
+.kpi-label {
+  @apply text-[11px] font-semibold uppercase tracking-wider text-slate;
 }
 .kpi-value {
-  @apply text-3xl font-bold tracking-tight text-navy mt-1 tabular-nums;
+  @apply font-display text-3xl font-bold tracking-tight text-ink mt-1 tabular-nums;
 }
 
+/* ---------------------------------------------------------------- Tables */
 .data-table-wrap {
   @apply card overflow-hidden;
 }
@@ -124,56 +159,59 @@ body {
   @apply w-full text-sm;
 }
 .data-table thead {
-  @apply bg-canvas/80 border-b border-navy/[0.06];
+  @apply bg-canvas border-b border-line;
 }
 .data-table th {
-  @apply px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate;
+  @apply px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate;
 }
 .data-table td {
-  @apply px-4 py-3 border-t border-navy/[0.04];
+  @apply px-4 py-3 border-t border-line text-ink tabular-nums;
 }
 .data-table tbody tr {
-  @apply transition-colors hover:bg-accent-soft/40;
+  @apply transition-colors hover:bg-canvas;
 }
 
 .toolbar {
   @apply flex flex-wrap items-center gap-3;
 }
 
+/* ---------------------------------------------------------------- Modal */
 .modal-backdrop {
-  @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/50 backdrop-blur-sm;
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50;
 }
 .modal-panel {
   @apply card card-body w-full max-w-lg space-y-4 shadow-float animate-slide-up;
 }
 
+/* ---------------------------------------------------------------- Loading */
 .skeleton {
-  @apply rounded-2xl bg-gradient-to-r from-canvas via-paper to-canvas bg-[length:200%_100%] animate-pulse;
+  @apply rounded-lg bg-slate-soft animate-pulse;
 }
 
+/* ---------------------------------------------------------------- Map: dart-inspired bus marker */
 .rw-bus-marker {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 4px 10px rgba(37, 99, 235, 0.45));
+  filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.4));
 }
 .rw-bus-chevron {
   width: 0;
   height: 0;
-  border-left: 11px solid transparent;
-  border-right: 11px solid transparent;
-  border-bottom: 26px solid #2563eb;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 24px solid #2563eb;
 }
 .rw-bus-ring {
   position: absolute;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
-  border: 3px solid rgba(37, 99, 235, 0.35);
+  border: 2px solid rgba(37, 99, 235, 0.35);
   animation: pulseSoft 2s ease-in-out infinite;
 }
 
 .maplibregl-ctrl-group {
-  @apply !rounded-xl !shadow-float !border-0 overflow-hidden;
+  @apply !rounded-lg !shadow-card !border !border-line overflow-hidden;
 }

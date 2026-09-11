@@ -1,0 +1,9 @@
+stop_id,name,address,latitude,longitude,approved,accessibility,safety_notes
+ST-01,Maple & 1st,"110 Maple St, Summit Valley",40.0192,-83.0270,true,curb_cut,Residential corner with crossing guard
+ST-02,Cedar Court,"85 Cedar Ct, Summit Valley",40.0175,-83.0228,true,none,Cul-de-sac turnaround
+ST-03,Birch Lane,"240 Birch Ln, Summit Valley",40.0220,-83.0300,true,none,Good sight lines
+ST-04,Willow Bend,"512 Willow Bend, Summit Valley",40.0138,-83.0332,true,curb_cut,Sidewalk both sides
+ST-05,Oak Ridge,"77 Oak Ridge Rd, Summit Valley",40.0110,-83.0300,true,none,Low-traffic street
+ST-06,Pine Hollow,"900 Pine Hollow Dr, Summit Valley",40.0090,-83.0388,true,curb_cut,Shelter at stop
+ST-07,Elm Circle,"33 Elm Cir, Summit Valley",40.0165,-83.0355,true,none,Corner of Elm and 3rd
+ST-08,Aspen Way,"415 Aspen Way, Summit Valley",40.0205,-83.0210,true,none,Marked crosswalk

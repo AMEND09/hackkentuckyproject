@@ -66,7 +66,7 @@ export function StudentsPage() {
                 <tr key={s.id}>
                   <td className="font-mono text-xs text-slate">{s.external_id}</td>
                   <td className="font-semibold">
-                    <Link className="link" to={`/students/${s.id}`}>
+                    <Link className="link" to={`/app/students/${s.id}`}>
                       {s.first_name} {s.last_name}
                     </Link>
                   </td>

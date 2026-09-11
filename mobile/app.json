@@ -9,10 +9,20 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-location"
+      "expo-location",
+      "expo-asset"
     ],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "demo.routewise.app" },
-    "android": { "package": "demo.routewise.app" },
-    "extra": { "router": { "origin": false } }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "demo.routewise.app"
+    },
+    "android": {
+      "package": "demo.routewise.app"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
   }
 }

@@ -92,7 +92,7 @@ export function DispatchPage() {
             <article key={t.id} className="card card-body flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Link className="link text-lg" to={`/trips/${t.id}`}>
+                  <Link className="link text-lg" to={`/app/trips/${t.id}`}>
                     {t.route_code}
                   </Link>
                   <span className={t.late_probability > 0.45 ? "badge-bad" : "badge-good"}>
@@ -106,7 +106,7 @@ export function DispatchPage() {
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Link className="btn-route text-xs" to={`/drive/${t.id}`}>
+                <Link className="btn-route text-xs" to={`/app/drive/${t.id}`}>
                   <Navigation size={14} /> Follow
                 </Link>
                 <button className="btn-secondary text-xs" onClick={() => disrupt.mutate(t.id)}>

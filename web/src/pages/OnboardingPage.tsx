@@ -4,10 +4,11 @@ import { Download, Upload } from "lucide-react";
 import { api, errorMessage } from "../api/client";
 import { PageHeader } from "../components/ui/PageHeader";
 
-const TYPES = ["schools", "students", "drivers", "vehicles", "stops"] as const;
+const TYPES = ["schools", "stops", "students", "vehicles", "drivers"] as const;
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 export function OnboardingPage() {
-  const [kind, setKind] = useState<(typeof TYPES)[number]>("students");
+  const [kind, setKind] = useState<(typeof TYPES)[number]>("schools");
   const [job, setJob] = useState<Record<string, unknown> | null>(null);
   const [mapping, setMapping] = useState<Record<string, { header: string | null }>>({});
   const [err, setErr] = useState<string | null>(null);
@@ -50,11 +51,29 @@ export function OnboardingPage() {
       />
 
       <ol className="card card-body text-sm text-slate space-y-2 list-decimal ml-5">
-        <li>Create district profile (seeded for the demo)</li>
-        <li>Upload CSV files and confirm column mapping</li>
-        <li>Review row errors, then commit</li>
+        <li>Your district workspace is created when you register — you are its admin</li>
+        <li>Import in order: schools, then stops, students, vehicles, drivers</li>
+        <li>Upload each CSV, confirm the column mapping, review errors, then commit</li>
+        <li>Students are auto-assigned to their nearest approved stop on commit</li>
         <li>Generate the first route plan from the planner</li>
       </ol>
+
+      <div className="card card-body flex flex-col gap-3">
+        <div>
+          <p className="label !normal-case !tracking-normal !text-ink">Starter dataset</p>
+          <p className="text-xs text-slate mt-1">
+            New account? Download this ready-to-import sample (Summit Valley) and upload each file below to see the full
+            workflow. It matches the default depot created with your account.
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {TYPES.map((t) => (
+            <a key={t} className="btn-secondary capitalize !py-2 text-xs" href={`${API_BASE}/imports/starter/${t}/`}>
+              <Download size={14} /> {t}.csv
+            </a>
+          ))}
+        </div>
+      </div>
 
       <div className="flex gap-2 flex-wrap">
         {TYPES.map((t) => (
@@ -62,8 +81,8 @@ export function OnboardingPage() {
             {t}
           </button>
         ))}
-        <a className="btn-secondary" href={`http://localhost:8000/api/v1/imports/templates/${kind}/`}>
-          <Download size={16} /> Template
+        <a className="btn-secondary" href={`${API_BASE}/imports/templates/${kind}/`}>
+          <Download size={16} /> {kind} template
         </a>
       </div>
 
@@ -137,7 +156,7 @@ export function OnboardingPage() {
             <button className="btn-primary" onClick={() => commit.mutate()} disabled={commit.isPending}>
               Commit import
             </button>
-            <a className="btn-secondary" href={`http://localhost:8000/api/v1/imports/${job.id}/errors.csv/`}>
+            <a className="btn-secondary" href={`${API_BASE}/imports/${job.id}/errors.csv/`}>
               Download errors
             </a>
           </div>

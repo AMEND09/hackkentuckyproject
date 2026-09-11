@@ -57,7 +57,7 @@ export function DrivePage() {
         />
         <div className="grid md:grid-cols-2 gap-4">
           {rows.map((t) => (
-            <Link key={t.id} to={`/drive/${t.id}`} className="card-hover group block">
+            <Link key={t.id} to={`/app/drive/${t.id}`} className="card-hover group block">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-xs font-bold uppercase tracking-wider text-route">{t.school_name}</div>
@@ -239,7 +239,7 @@ function DriveGuide({ tripId }: { tripId: string }) {
       />
 
       <Link
-        to="/drive"
+        to="/app/drive"
         className="absolute top-4 left-4 z-10 glass px-3 py-2 text-sm font-semibold flex items-center gap-2 hover:bg-white"
       >
         <ArrowLeft size={16} /> Routes

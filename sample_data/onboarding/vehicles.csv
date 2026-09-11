@@ -1,0 +1,5 @@
+vehicle_number,license_plate,capacity,wheelchair_capacity,vehicle_type,status,depot_name
+SV-BUS-01,SV-1001,72,0,standard,active,Main Bus Depot
+SV-BUS-02,SV-1002,72,0,standard,active,Main Bus Depot
+SV-BUS-03,SV-1003,48,2,accessible,active,Main Bus Depot
+SV-BUS-04,SV-1004,54,1,accessible,spare,Main Bus Depot

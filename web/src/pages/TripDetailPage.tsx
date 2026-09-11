@@ -32,7 +32,7 @@ export function TripDetailPage() {
             {trip.is_simulated ? " · Simulated GPS" : ""}
           </p>
         </div>
-        <Link className="btn-route" to={`/drive/${trip.id}`}>
+        <Link className="btn-route" to={`/app/drive/${trip.id}`}>
           <Navigation size={16} /> Open route guide
         </Link>
       </div>

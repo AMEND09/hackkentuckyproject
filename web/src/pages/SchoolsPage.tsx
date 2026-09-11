@@ -66,7 +66,7 @@ export function SchoolsPage() {
                 {rows.map((s: { id: string; name: string; school_type: string; morning_bell_time: string; dismissal_time: string }) => (
                   <tr key={s.id}>
                     <td className="font-semibold">
-                      <Link className="link" to={`/schools/${s.id}`}>
+                      <Link className="link" to={`/app/schools/${s.id}`}>
                         {s.name}
                       </Link>
                     </td>

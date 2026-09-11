@@ -13,9 +13,15 @@ from apps.accounts.models import User, UserRole
 from apps.districts.models import Depot, School
 from apps.imports.models import ImportJob, ImportRowError
 from apps.imports.services.mapper import REQUIRED, get_column_mapper, read_csv_bytes
-from apps.transportation.models import BusStop, DriverProfile, Student, Vehicle
+from apps.transportation.models import (
+    BusStop,
+    DriverProfile,
+    Student,
+    StudentStopAssignment,
+    Vehicle,
+)
 from common.exceptions.errors import RouteWiseError
-from common.utilities.geo import safe_filename
+from common.utilities.geo import haversine_km, safe_filename
 
 
 def store_upload(job: ImportJob, uploaded) -> None:
@@ -223,6 +229,9 @@ def _commit_schools(district, rows, mapping):
 
 def _commit_students(district, rows, mapping):
     schools = {s.school_code: s for s in district.schools.all()}
+    # Approved stops for automatic nearest-stop assignment so imported
+    # rosters are immediately routable (the CSV has no stop column).
+    approved_stops = list(district.busstops.filter(is_approved=True))
     for row in rows:
         sid = _cell(row, mapping, "student_id")
         school = schools.get(_cell(row, mapping, "school_id"))
@@ -230,7 +239,7 @@ def _commit_students(district, rows, mapping):
             school = next(iter(schools.values()))
         elig = Student.Eligibility.ELIGIBLE if _truthy(_cell(row, mapping, "eligible") or "true") else Student.Eligibility.INELIGIBLE
         ride = _cell(row, mapping, "max_ride_minutes")
-        Student.objects.update_or_create(
+        student, _ = Student.objects.update_or_create(
             district=district,
             external_id=sid,
             defaults={
@@ -247,6 +256,30 @@ def _commit_students(district, rows, mapping):
                 "is_active": True,
             },
         )
+        _assign_nearest_stop(student, approved_stops)
+
+
+def _assign_nearest_stop(student, approved_stops) -> None:
+    """Attach the student to their nearest approved stop for the morning run.
+
+    Skips students who already have an active AM/both assignment so re-imports
+    and manual assignments are preserved.
+    """
+    if not approved_stops:
+        return
+    if student.stop_assignments.filter(is_active=True, direction__in=("am", "both")).exists():
+        return
+    nearest = min(
+        approved_stops,
+        key=lambda s: haversine_km(student.latitude, student.longitude, s.latitude, s.longitude),
+    )
+    dist_km = haversine_km(student.latitude, student.longitude, nearest.latitude, nearest.longitude)
+    StudentStopAssignment.objects.get_or_create(
+        student=student,
+        bus_stop=nearest,
+        direction=StudentStopAssignment.Direction.AM,
+        defaults={"walking_distance_m": int(dist_km * 1000), "is_active": True},
+    )
 
 
 def _commit_drivers(district, rows, mapping):
