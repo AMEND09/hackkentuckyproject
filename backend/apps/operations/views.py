@@ -34,7 +34,7 @@ class TripViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         "route__school", "vehicle", "driver__user", "district"
     ).prefetch_related("positions", "alerts", "incidents", "stop_events", "route__stops")
     permission_classes = [IsAuthenticated, HasRole]
-    allowed_roles = STAFF + (UserRole.DRIVER,)
+    allowed_roles = STAFF + (UserRole.DRIVER, UserRole.GUARDIAN)
     filterset_fields = ("status", "service_date")
 
     def get_serializer_class(self):

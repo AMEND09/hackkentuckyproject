@@ -3,11 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Navigation } from "lucide-react";
 import { api } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
 import { RouteMap } from "../components/maps/RouteMap";
 import { LoadingBlock } from "../components/ui/LoadingBlock";
 
 export function TripDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const isGuardian = user?.role === "guardian";
   const qc = useQueryClient();
   const { data: trip } = useQuery({
     queryKey: ["trip", id],
@@ -94,9 +97,11 @@ export function TripDetailPage() {
       </div>
 
       <p className="card card-body text-sm text-slate leading-relaxed">{trip.ml_explanation}</p>
-      <button className="btn-secondary" onClick={() => incident.mutate()}>
-        Create incident
-      </button>
+      {!isGuardian && (
+        <button className="btn-secondary" onClick={() => incident.mutate()}>
+          Create incident
+        </button>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Clock, MapPin, Navigation, Play, Square } from "lucide-react";
 import { api } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
 import { RouteMap } from "../components/maps/RouteMap";
 import { PageHeader } from "../components/ui/PageHeader";
 import { interpolateAlong, headingAlongPath, lerpAngleDegrees, routeDurationMs, type RouteCoord } from "../utils/routePath";
@@ -43,6 +44,8 @@ type Trip = {
 
 export function DrivePage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const isGuardian = user?.role === "guardian";
   const { data: trips } = useQuery({
     queryKey: ["trips", "drive"],
     queryFn: async () => (await api.get("/trips/", { params: { page_size: 50 } })).data,
@@ -81,10 +84,10 @@ export function DrivePage() {
       </div>
     );
   }
-  return <DriveGuide tripId={id} />;
+  return <DriveGuide tripId={id} isGuardian={isGuardian} />;
 }
 
-function DriveGuide({ tripId }: { tripId: string }) {
+function DriveGuide({ tripId, isGuardian }: { tripId: string; isGuardian: boolean }) {
   const qc = useQueryClient();
   const [sim, setSim] = useState(false);
   const [liveBus, setLiveBus] = useState<{ lat: number; lng: number; heading: number } | null>(null);
@@ -300,37 +303,44 @@ function DriveGuide({ tripId }: { tripId: string }) {
         </div>
 
         <div className="glass-dark p-3 flex flex-wrap gap-2">
-          <button
-            className="btn-route flex-1 min-w-[120px]"
-            disabled={sim || act.isPending || street.length < 2}
-            onClick={() => startDrive()}
-          >
-            <Play size={16} /> {sim ? "Driving…" : "Start"}
-          </button>
-          <button
-            className={`flex-1 min-w-[120px] ${sim ? "btn-danger" : "btn-secondary !bg-white/15 !text-white !border-white/20 hover:!bg-white/25"}`}
-            disabled={street.length < 2}
-            onClick={() => {
-              if (sim) {
-                setSim(false);
-                syncSimStep(tRef.current);
-                qc.invalidateQueries({ queryKey: ["trip", tripId] });
-              } else {
-                simStartRef.current = null;
-                setSim(true);
-              }
-            }}
-          >
-            {sim ? (
-              <>
-                <Square size={16} /> Stop
-              </>
-            ) : (
-              <>
-                <Navigation size={16} /> Follow
-              </>
-            )}
-          </button>
+          {!isGuardian && (
+            <>
+              <button
+                className="btn-route flex-1 min-w-[120px]"
+                disabled={sim || act.isPending || street.length < 2}
+                onClick={() => startDrive()}
+              >
+                <Play size={16} /> {sim ? "Driving…" : "Start"}
+              </button>
+              <button
+                className={`flex-1 min-w-[120px] ${sim ? "btn-danger" : "btn-secondary !bg-white/15 !text-white !border-white/20 hover:!bg-white/25"}`}
+                disabled={street.length < 2}
+                onClick={() => {
+                  if (sim) {
+                    setSim(false);
+                    syncSimStep(tRef.current);
+                    qc.invalidateQueries({ queryKey: ["trip", tripId] });
+                  } else {
+                    simStartRef.current = null;
+                    setSim(true);
+                  }
+                }}
+              >
+                {sim ? (
+                  <>
+                    <Square size={16} /> Stop
+                  </>
+                ) : (
+                  <>
+                    <Navigation size={16} /> Follow
+                  </>
+                )}
+              </button>
+            </>
+          )}
+          {isGuardian && (
+            <p className="text-xs text-white/60 w-full text-center">View only — simulation controls are restricted to drivers and staff.</p>
+          )}
         </div>
       </div>
     </div>
