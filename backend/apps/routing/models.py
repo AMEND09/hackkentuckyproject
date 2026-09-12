@@ -61,6 +61,12 @@ class Route(TimeStampedUUIDModel):
     risk_factors = models.JSONField(default=list, blank=True)
     student_count = models.PositiveIntegerField(default=0)
     wheelchair_count = models.PositiveIntegerField(default=0)
+    safety_context = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="High-injury corridor overlap, active construction, signal crossings, snow-route coverage "
+        "from the real Louisville Metro / LOJIC open-data layers (apps.geodata).",
+    )
 
     class Meta:
         ordering = ["route_code"]

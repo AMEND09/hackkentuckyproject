@@ -20,6 +20,7 @@ class StressTestSerializer(serializers.ModelSerializer):
             "traffic_severity",
             "weather_severity",
             "rain",
+            "snow_day",
             "starting_delay_min",
             "starting_delay_max",
             "boarding_variability",

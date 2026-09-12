@@ -23,6 +23,20 @@ Mobile: React Native, Expo, Expo Router, TanStack Query, Axios, Expo Secure Stor
 
 Backend: Python 3.12+, Django, DRF, SimpleJWT, Celery, Channels, OR-Tools, pandas, NumPy, scikit-learn, joblib.
 
+## Deploy (Docker)
+
+Single command — builds and runs Postgres/PostGIS, Redis, Django API (Daphne), a Celery worker, and the web UI:
+
+```bash
+cp .env.example .env   # set DJANGO_SECRET_KEY to a real secret first
+docker compose up --build
+```
+
+- Web: http://localhost:8080 — API: http://localhost:8000/api/v1/ — Health: http://localhost:8000/health/
+- First boot migrates, collects static files, seeds the Jefferson demo (`SEED_DEMO=false` to skip), and trains the synthetic ML models (`TRAIN_ML_ON_BOOT=false` to skip; artifacts persist in a volume).
+- `docker compose down` stops everything; add `-v` to also drop the database.
+- Behind TLS, set `SESSION_COOKIE_SECURE=true` and `CSRF_COOKIE_SECURE=true`. Mobile/Expo still runs on the host (see `EXPO_PUBLIC_API_URL`).
+
 ## Setup
 
 Requirements: Docker Desktop, Python 3.12+ (Windows `py` launcher is supported), Node 20+, npm.
@@ -87,7 +101,7 @@ cd ../web && npm test && npm run typecheck
 
 ## ML design
 
-scikit-learn `GradientBoostingRegressor` quantile models (P50 α=0.5, P90 α=0.9) plus an optional late classifier. Trained on ≥20,000 **fictional** seeded segments. The UI labels this as synthetic. If artifacts are missing, routing falls back to Haversine durations.
+scikit-learn `GradientBoostingRegressor` quantile models (P50 α=0.5, P90 α=0.9) plus a late classifier. Trained on ≥20,000 **fictional** seeded segments with realistic planned speeds (18–42 km/h) and late labels that exclude normal boarding dwell. The UI labels this as synthetic. Live trip ETAs sum per-leg model predictions over remaining stops; the optimizer blends worst-leg classifier risk into on-time probability. Travel matrix prefers OSRM street durations (`USE_STREET_MATRIX=true` in deploy) with per-cell Haversine fallback. If artifacts are missing, routing falls back to Haversine durations.
 
 ```bash
 python manage.py generate_synthetic_ml_data

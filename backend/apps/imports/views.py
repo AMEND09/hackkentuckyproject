@@ -109,3 +109,19 @@ class ImportJobViewSet(TenantQuerySetMixin, viewsets.ReadOnlyModelViewSet):
         resp = HttpResponse(path.read_text(encoding="utf-8"), content_type="text/csv")
         resp["Content-Disposition"] = f'attachment; filename="{kind}.csv"'
         return resp
+
+    @action(detail=False, methods=["get"], url_path="starter/(?P<kind>[^/.]+)", permission_classes=[AllowAny])
+    def starter(self, request, kind=None):
+        """Ready-to-import starter roster (Summit Valley sample) for a new account."""
+        from pathlib import Path
+
+        from django.conf import settings as dj
+
+        path = Path(dj.REPO_ROOT) / "sample_data" / "onboarding" / f"{kind}.csv"
+        if not path.exists():
+            from common.exceptions.errors import RouteWiseError
+
+            raise RouteWiseError("Unknown starter file.", code="NOT_FOUND", status_code=404)
+        resp = HttpResponse(path.read_text(encoding="utf-8"), content_type="text/csv")
+        resp["Content-Disposition"] = f'attachment; filename="{kind}.csv"'
+        return resp

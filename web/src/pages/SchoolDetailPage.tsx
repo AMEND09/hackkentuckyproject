@@ -20,7 +20,7 @@ export function SchoolDetailPage() {
   const rows = students?.results || [];
   return (
     <div className="page-shell">
-      <Link to="/schools" className="back-link">
+      <Link to="/app/schools" className="back-link">
         <ArrowLeft size={14} /> Schools
       </Link>
       <div className="page-header">
@@ -64,7 +64,7 @@ export function SchoolDetailPage() {
             {rows.map((s: { id: string; first_name: string; last_name: string; grade: string; requires_wheelchair: boolean }) => (
               <tr key={s.id}>
                 <td className="font-semibold">
-                  <Link className="link" to={`/students/${s.id}`}>
+                  <Link className="link" to={`/app/students/${s.id}`}>
                     {s.first_name} {s.last_name}
                   </Link>
                 </td>

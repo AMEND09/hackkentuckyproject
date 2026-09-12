@@ -98,8 +98,9 @@ class BusStopSerializer(serializers.ModelSerializer):
             "is_approved",
             "accessibility",
             "safety_notes",
+            "safety_flags",
         )
-        read_only_fields = ("id", "district")
+        read_only_fields = ("id", "district", "safety_flags")
 
 
 class StudentStopAssignmentSerializer(serializers.ModelSerializer):

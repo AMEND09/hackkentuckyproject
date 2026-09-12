@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -21,6 +22,9 @@ vi.mock("../src/api/client", async () => {
     },
   };
 });
+
+// maplibre needs WebGL/canvas, unavailable in jsdom — stub the map component.
+vi.mock("../src/components/maps/RouteMap", () => ({ RouteMap: () => null }));
 
 import { api } from "../src/api/client";
 
@@ -53,8 +57,10 @@ describe("auth", () => {
   });
 
   it("renders login and demo accounts", async () => {
+    vi.stubEnv("VITE_DEMO_MODE", "true");
     wrap(<LoginPage />);
-    expect(await screen.findByText("Sign in")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
     expect(await screen.findByText("District admin")).toBeInTheDocument();
   });
 
@@ -125,7 +131,7 @@ describe("alerts", () => {
     vi.mocked(api.post).mockResolvedValue({ data: {} });
     wrap(<DispatchPage />);
     expect(await screen.findByText("Predicted delay")).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Acknowledge"));
+    await userEvent.click(screen.getByText("Ack"));
     expect(api.post).toHaveBeenCalledWith("/alerts/a1/acknowledge/");
   });
 });

@@ -20,12 +20,20 @@ def run_stress_test(run) -> dict:
     max_ride = (policy.max_student_ride_minutes if policy else 45) * 60
     bell_buffer = (policy.min_arrival_buffer_minutes if policy else 10) * 60
 
+    # Real Public Works snow/salt priority coverage per route (computed once by
+    # the optimizer from apps.geodata; see Route.safety_context). Routes with
+    # low coverage take a heavier, noisier hit in snow-day mode below.
+    snow_uncovered_by_route = {
+        str(r.id): 1.0 - float((r.safety_context or {}).get("snow_route_coverage", 1.0)) for r in routes
+    }
+
     per_route = {str(r.id): {"late": 0, "ride_exceed": 0, "arrivals": [], "code": r.route_code} for r in routes}
     all_on_time = 0
     any_late = 0
     disruptions = 0
     driver_absences = 0
     rain_hits = 0
+    snow_stuck_events = 0
 
     for _ in range(n):
         traffic = min(1.0, max(0.0, rng.gauss(run.traffic_severity, 0.12)))
@@ -48,6 +56,14 @@ def run_stress_test(run) -> dict:
             rain_pen = 0.16 * route.p50_duration_seconds if raining else 0
             traffic_pen = traffic * 0.28 * route.p50_duration_seconds
             weather_pen = weather * 0.08 * route.p90_duration_seconds
+            snow_pen = 0.0
+            if run.snow_day:
+                uncovered = snow_uncovered_by_route[str(route.id)]
+                snow_factor = min(1.0, max(0.0, rng.gauss(0.5, 0.15)))
+                snow_pen = uncovered * snow_factor * 0.6 * route.p90_duration_seconds
+                if rng.random() < uncovered * 0.15:
+                    snow_pen += rng.randint(300, 900)
+                    snow_stuck_events += 1
             actual = (
                 route.p50_duration_seconds
                 + start_delay
@@ -57,6 +73,7 @@ def run_stress_test(run) -> dict:
                 + rain_pen
                 + traffic_pen
                 + weather_pen
+                + snow_pen
             )
             # scheduled arrival vs bell: use p50 as planned
             late_margin = actual - route.p50_duration_seconds
@@ -88,6 +105,7 @@ def run_stress_test(run) -> dict:
                 "p90_duration_s": int(p90),
                 "worst_s": int(max(arrivals)),
                 "ride_time_exceed_probability": round(rec["ride_exceed"] / n, 3),
+                "snow_route_coverage": round(1.0 - snow_uncovered_by_route[str(route.id)], 3),
             }
         )
     route_stats.sort(key=lambda r: r["on_time_probability"])
@@ -103,6 +121,15 @@ def run_stress_test(run) -> dict:
         factors.append("Driver absence forces last-minute cover and late pull-outs.")
     if run.road_disruption_rate >= 0.08:
         factors.append("Road disruptions create heavy-tailed late arrivals.")
+    if run.snow_day:
+        worst_snow = min(route_stats, key=lambda r: r["snow_route_coverage"]) if route_stats else None
+        if worst_snow and worst_snow["snow_route_coverage"] < 0.5:
+            factors.append(
+                f"Snow-day mode: {worst_snow['route_code']} is mostly off Public Works' priority plow routes "
+                f"({worst_snow['snow_route_coverage']:.0%} covered) and absorbs the largest snow penalty."
+            )
+        else:
+            factors.append("Snow-day mode: every route is well-covered by priority plow routes.")
     if not factors:
         factors.append("Under this mild scenario, boarding variation is the main remaining risk.")
 
@@ -132,6 +159,8 @@ def run_stress_test(run) -> dict:
         "driver_absence_events": driver_absences,
         "road_disruption_events": disruptions,
         "rain_mornings": rain_hits,
+        "snow_day_mode": bool(run.snow_day),
+        "snow_stuck_events": snow_stuck_events,
         "synthetic": True,
     }
     if run.compare_plan_id:

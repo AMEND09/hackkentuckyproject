@@ -9,6 +9,7 @@ import {
   Navigation,
   Radio,
   School,
+  Search,
   Settings,
   Sparkles,
   Upload,
@@ -17,45 +18,44 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider";
 import type { Role } from "../../types";
+import { Logo } from "../brand/Logo";
 
 const links: { to: string; label: string; icon: typeof Map; roles?: Role[] }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/drive", label: "Route guide", icon: Navigation },
-  { to: "/onboarding", label: "Onboarding", icon: Upload, roles: ["platform_admin", "district_admin", "planner"] },
-  { to: "/schools", label: "Schools", icon: School, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
-  { to: "/students", label: "Students", icon: Users, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
-  { to: "/fleet", label: "Fleet", icon: Bus, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
-  { to: "/drivers", label: "Drivers", icon: Users, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
-  { to: "/planner", label: "Route planner", icon: Waypoints, roles: ["platform_admin", "district_admin", "planner"] },
-  { to: "/compare", label: "Compare plans", icon: GitCompare, roles: ["platform_admin", "district_admin", "planner"] },
-  { to: "/twin", label: "Digital twin", icon: Sparkles, roles: ["platform_admin", "district_admin", "planner"] },
-  { to: "/dispatch", label: "Dispatcher", icon: Radio, roles: ["platform_admin", "district_admin", "planner", "dispatcher", "driver"] },
-  { to: "/admin", label: "Administration", icon: Settings, roles: ["platform_admin", "district_admin"] },
+  { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/app/drive", label: "Route guide", icon: Navigation },
+  { to: "/app/onboarding", label: "Onboarding", icon: Upload, roles: ["platform_admin", "district_admin", "planner"] },
+  { to: "/app/schools", label: "Schools", icon: School, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
+  { to: "/app/students", label: "Students", icon: Users, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
+  { to: "/app/fleet", label: "Fleet", icon: Bus, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
+  { to: "/app/drivers", label: "Drivers", icon: Users, roles: ["platform_admin", "district_admin", "planner", "dispatcher"] },
+  { to: "/app/planner", label: "Route planner", icon: Waypoints, roles: ["platform_admin", "district_admin", "planner"] },
+  { to: "/app/compare", label: "Compare plans", icon: GitCompare, roles: ["platform_admin", "district_admin", "planner"] },
+  { to: "/app/twin", label: "Digital twin", icon: Sparkles, roles: ["platform_admin", "district_admin", "planner"] },
+  { to: "/app/dispatch", label: "Dispatcher", icon: Radio, roles: ["platform_admin", "district_admin", "planner", "dispatcher", "driver"] },
+  { to: "/app/admin", label: "Administration", icon: Settings, roles: ["platform_admin", "district_admin"] },
 ];
 
 export function AppShell() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
-  const immersive = loc.pathname.startsWith("/drive/");
-  const visible = links.filter((l) => !l.roles || (user && (l.roles.includes(user.role) || user.role === "platform_admin")));
+  const immersive = loc.pathname.startsWith("/app/drive/");
+  const visible = links.filter(
+    (l) => !l.roles || (user && (l.roles.includes(user.role) || user.role === "platform_admin")),
+  );
+
   return (
-    <div className="min-h-screen flex bg-canvas">
+    <div className="min-h-screen flex bg-canvas text-ink">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:p-2 bg-white z-50">
         Skip to content
       </a>
-      <aside className="w-[17rem] shrink-0 flex flex-col bg-navy text-white shadow-nav">
-        <div className="px-5 py-6 border-b border-white/[0.08]">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-route flex items-center justify-center shadow-lg shadow-route/30">
-              <Bus size={20} className="text-white" aria-hidden />
-            </div>
-            <div>
-              <div className="text-lg font-bold tracking-tight">RouteWise</div>
-              <p className="text-[10px] text-white/50 mt-0.5 uppercase tracking-widest font-semibold">Transport POC</p>
-            </div>
-          </div>
+
+      {/* Sidebar */}
+      <aside className="w-[16.5rem] shrink-0 flex flex-col bg-paper border-r border-line">
+        <div className="h-16 px-5 flex items-center border-b border-line">
+          <Logo size={26} showTagline />
         </div>
+
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto" aria-label="Primary">
           {visible.map((l) => {
             const Icon = l.icon;
@@ -64,46 +64,88 @@ export function AppShell() {
                 key={l.to}
                 to={l.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium min-h-10 transition-all ${
-                    isActive
-                      ? "bg-white/12 text-white shadow-inset border border-white/10"
-                      : "text-white/65 hover:bg-white/[0.07] hover:text-white"
+                  `group relative flex items-center gap-3 rounded-lg pl-4 pr-3 py-2.5 text-[13px] font-medium min-h-10 transition-colors ${
+                    isActive ? "bg-accent-soft text-route" : "text-slate hover:bg-canvas hover:text-ink"
                   }`
                 }
               >
-                <Icon size={16} strokeWidth={2} aria-hidden />
-                {l.label}
+                {({ isActive }) => (
+                  <>
+                    {/* Dart-inspired directional active indicator */}
+                    <span
+                      aria-hidden
+                      className={`absolute left-0 top-1/2 -translate-y-1/2 transition-opacity ${
+                        isActive ? "opacity-100" : "opacity-0"
+                      }`}
+                      style={{
+                        width: 0,
+                        height: 0,
+                        borderTop: "5px solid transparent",
+                        borderBottom: "5px solid transparent",
+                        borderLeft: "6px solid #2563EB",
+                      }}
+                    />
+                    <Icon
+                      size={17}
+                      strokeWidth={2}
+                      className={isActive ? "text-route" : "text-slate group-hover:text-ink"}
+                      aria-hidden
+                    />
+                    {l.label}
+                  </>
+                )}
               </NavLink>
             );
           })}
         </nav>
-        <div className="p-4 m-3 rounded-xl bg-white/[0.06] border border-white/[0.08]">
-          <div className="font-semibold text-sm">
-            {user?.first_name} {user?.last_name}
+
+        <div className="p-3 border-t border-line">
+          <div className="rounded-xl border border-line bg-canvas px-3.5 py-3">
+            <div className="text-sm font-semibold text-ink truncate">
+              {user?.first_name} {user?.last_name}
+            </div>
+            <div className="text-slate capitalize text-xs mt-0.5">{user?.role.replace("_", " ")}</div>
+            <button
+              className="mt-2.5 inline-flex items-center gap-1.5 text-slate hover:text-ink text-xs font-semibold transition-colors"
+              onClick={async () => {
+                await logout();
+                nav("/");
+              }}
+            >
+              <LogOut size={14} /> Sign out
+            </button>
           </div>
-          <div className="text-white/50 capitalize text-xs mt-0.5">{user?.role.replace("_", " ")}</div>
-          <button
-            className="mt-3 flex items-center gap-2 text-white/70 hover:text-white text-xs font-semibold"
-            onClick={async () => {
-              await logout();
-              nav("/login");
-            }}
-          >
-            <LogOut size={14} /> Sign out
-          </button>
         </div>
       </aside>
+
+      {/* Main column */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-14 bg-paper/90 backdrop-blur-md border-b border-navy/[0.06] flex items-center justify-between px-6 shrink-0 sticky top-0 z-40">
-          <div className="flex items-center gap-2.5 text-sm text-slate">
-            <Map size={15} className="text-route" />
-            <span className="font-medium text-ink">Jefferson Demo Schools</span>
-            <span className="badge-warn !text-[10px]">Demo</span>
+        <header className="h-16 bg-paper border-b border-line flex items-center justify-between gap-4 px-6 shrink-0 sticky top-0 z-40">
+          <div className="flex items-center gap-3 min-w-0">
+            <Map size={16} className="text-route shrink-0" aria-hidden />
+            <span className="font-semibold text-ink truncate">{user?.district_name ?? "District console"}</span>
+            <span className="badge-info">Demo</span>
           </div>
-          <button type="button" className="p-2 rounded-xl hover:bg-canvas text-slate transition" aria-label="Notifications">
-            <Bell size={17} />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative hidden md:block">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+              <input
+                type="search"
+                placeholder="Search routes, students…"
+                aria-label="Search"
+                className="input !py-2 !pl-9 w-64"
+              />
+            </div>
+            <button
+              type="button"
+              className="p-2.5 rounded-lg border border-line text-slate hover:text-ink hover:bg-canvas transition-colors"
+              aria-label="Notifications"
+            >
+              <Bell size={17} />
+            </button>
+          </div>
         </header>
+
         <main id="main" className={immersive ? "flex-1 p-0 overflow-hidden" : "flex-1 p-5 lg:p-8 overflow-auto"}>
           <Outlet />
         </main>

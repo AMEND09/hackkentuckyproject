@@ -45,6 +45,10 @@ model_artifacts/*.pkl
 model_artifacts/*.csv
 !model_artifacts/.gitkeep
 
+# Self-hosted OSRM extract (built locally, large binaries)
+osrm-data/*
+!osrm-data/.gitkeep
+
 # OS / IDE
 .DS_Store
 Thumbs.db

@@ -2,10 +2,20 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { api, setAccessToken, setRefresh } from "../api/client";
 import type { User } from "../types";
 
+export interface RegisterInput {
+  district_name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
+
 interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  register: (input: RegisterInput) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -29,6 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       async login(email, password) {
         const { data } = await api.post("/auth/login/", { email, password });
+        setAccessToken(data.tokens.access);
+        setRefresh(data.tokens.refresh);
+        setUser(data.user);
+        return data.user as User;
+      },
+      async register(input) {
+        const { data } = await api.post("/auth/register/", input);
         setAccessToken(data.tokens.access);
         setRefresh(data.tokens.refresh);
         setUser(data.user);

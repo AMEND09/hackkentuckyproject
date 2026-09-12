@@ -3,6 +3,11 @@ import socket
 
 DEBUG = True
 
+# Dev only: allow access from LAN (physical phones / simulators hitting the
+# machine's LAN IP) without pinning a specific address that changes per network.
+ALLOWED_HOSTS = ["*"]
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 def _tcp_open(port: int) -> bool:
     try:

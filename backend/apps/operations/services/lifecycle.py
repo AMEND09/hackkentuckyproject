@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from django.db import models
 from django.utils import timezone
 
 from apps.operations.models import GPSPosition, OperationalAlert, Trip
@@ -32,24 +33,105 @@ def _combine(service_date, t):
     return timezone.make_aware(datetime.combine(service_date, t))
 
 
+def _live_leg_features(trip: Trip, stops: list, wc_by_stop: dict, now) -> list[dict]:
+    """Build model features for each remaining leg from persisted route data.
+
+    road_category/urban_density/traffic_severity/rain/weather_severity use the
+    real Louisville geodata + weather layers when loaded (apps.geodata,
+    apps.machine_learning.services.weather); each falls back to the original
+    heuristic when a lookup finds nothing, so this is a no-op until
+    `import_louisville_open_data` has been run.
+    """
+    from apps.geodata import services as geo_services
+    from apps.machine_learning.services import weather as weather_service
+
+    total = len(stops)
+    rush = 0.45 if now.hour in {7, 8, 15, 16} else 0.2
+    wx = weather_service.current_conditions(float(stops[0].latitude), float(stops[0].longitude)) if stops else {}
+    feats = []
+    for pos, stop in enumerate(stops):
+        dist = float(stop.distance_from_previous_km or 0)
+        planned = float(stop.expected_seconds_from_previous or 0) or max(30, dist / 28 * 3600)
+        road = geo_services.road_context_for(float(stop.latitude), float(stop.longitude))
+        signals = geo_services.signal_count_near(float(stop.latitude), float(stop.longitude))
+        feats.append(
+            {
+                "distance_km": dist,
+                "planned_duration_s": planned,
+                "departure_hour": now.hour,
+                "day_of_week": min(now.weekday(), 4),  # models trained Mon-Fri only
+                "road_category": road["road_category"] if road else (1 if dist > 2.5 else 0),
+                "traffic_severity": min(1.0, rush + 0.05 * signals),
+                "rain": wx.get("rain", 0),
+                "weather_severity": wx.get("weather_severity", 0.15),
+                "passenger_load": stop.cumulative_load or 0,
+                "students_boarding": stop.student_count or 0,
+                "wheelchair_boardings": wc_by_stop.get(str(stop.id), 0),
+                "remaining_stops": max(0, total - pos - 1),
+                "urban_density": road["urban_density"] if road else 0.6,
+                "historical_delay_s": trip.current_delay_seconds,
+                "segment_position": stop.sequence / max(total, 1),
+            }
+        )
+    return feats
+
+
 def refresh_trip_eta(trip: Trip, extra_delay_s: int = 0) -> Trip:
+    from apps.machine_learning.services.predict import predict_segments
+
     trip.current_delay_seconds = max(0, trip.current_delay_seconds + extra_delay_s)
-    remaining = max(1, (trip.route.p50_duration_seconds or 600) - trip.current_stop_sequence * 180)
     now = timezone.now()
-    trip.current_p50_eta = now + timedelta(seconds=remaining + trip.current_delay_seconds)
-    trip.current_p90_eta = now + timedelta(
-        seconds=int(remaining * 1.2) + int(trip.current_delay_seconds * 1.15)
-    )
-    # Late probability from delay vs remaining slack
-    slack = 8 * 60
-    trip.late_probability = round(min(0.99, trip.current_delay_seconds / max(slack, 1) * 0.55 + 0.05), 3)
-    if trip.current_delay_seconds > 4 * 60:
+    stops = list(trip.route.stops.order_by("sequence"))
+    remaining = [s for s in stops if s.kind != "depot" and s.sequence > (trip.current_stop_sequence or 0)]
+    if not remaining:
+        remaining = [s for s in stops if s.kind == "school"] or stops[-1:]
+
+    if not remaining:
+        # Bare route with no persisted stops: heuristic on route totals.
+        p50_total = max(1, trip.route.p50_duration_seconds or 600)
+        p90_total = max(p50_total, trip.route.p90_duration_seconds or int(p50_total * 1.2))
+        model_risk, model_active, version = 0.15, False, None
+    else:
+        wc_by_stop: dict = {}
+        from apps.routing.models import RouteStopStudent
+
+        wc_rows = (
+            RouteStopStudent.objects.filter(route_stop__in=remaining, student__requires_wheelchair=True)
+            .values("route_stop_id")
+            .annotate(n=models.Count("id"))
+        )
+        wc_by_stop = {str(r["route_stop_id"]): r["n"] for r in wc_rows}
+
+        preds = predict_segments(_live_leg_features(trip, remaining, wc_by_stop, now))
+        p50_total = sum(p["p50_s"] for p in preds) if preds else max(1, (trip.route.p50_duration_seconds or 600))
+        p90_total = sum(p["p90_s"] for p in preds) if preds else int(p50_total * 1.2)
+        model_risk = max([p["delay_risk"] for p in preds], default=0.15)
+        model_active = bool(preds) and not preds[0].get("fallback", True)
+        version = preds[0].get("model_version") if model_active else None
+
+    trip.current_p50_eta = now + timedelta(seconds=p50_total + trip.current_delay_seconds)
+    trip.current_p90_eta = now + timedelta(seconds=p90_total + trip.current_delay_seconds)
+    # Late probability: worst remaining leg per the classifier, never below the
+    # delay-driven heuristic so large observed delays still alert on fallback.
+    delay_component = min(0.99, trip.current_delay_seconds / max(8 * 60, 1) * 0.55 + 0.05)
+    trip.late_probability = round(min(0.99, max(model_risk, delay_component)), 3)
+    if model_active:
         trip.ml_explanation = (
-            "Synthetic delay model: this bus is behind the planned P50 pace. "
-            "Remaining stops and dwell time make a late school arrival more likely."
+            f"Live ETA from quantile travel models (v{version}): "
+            f"{len(remaining)} stops left, worst-leg late risk {model_risk:.0%}. "
+            "Trained on synthetic segments — not a production prediction."
+        )
+    elif trip.current_delay_seconds > 4 * 60:
+        trip.ml_explanation = (
+            "No trained models available — heuristic ETA. This bus is behind the "
+            "planned P50 pace. Remaining stops and dwell time make a late school "
+            "arrival more likely."
         )
     else:
-        trip.ml_explanation = "The bus is near its planned pace. Remaining risk is mainly boarding variation."
+        trip.ml_explanation = (
+            "No trained models available — heuristic ETA. The bus is near its "
+            "planned pace. Remaining risk is mainly boarding variation."
+        )
     trip.save()
     maybe_raise_delay_alert(trip)
     return trip

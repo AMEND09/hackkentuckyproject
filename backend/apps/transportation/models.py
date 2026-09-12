@@ -80,10 +80,22 @@ class BusStop(TenantModel):
     is_approved = models.BooleanField(default=True)
     accessibility = models.CharField(max_length=80, blank=True)
     safety_notes = models.TextField(blank=True)
+    safety_flags = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Auto-computed from Louisville Metro/LOJIC open data (apps.geodata): high-injury-corridor "
+        "proximity and whether a marked crossing or signal is nearby. Recomputed on every save.",
+    )
 
     class Meta:
         unique_together = ("district", "stop_code")
         ordering = ["name"]
+
+    def save(self, *args, **kwargs):
+        from apps.geodata.services import stop_safety_flags
+
+        self.safety_flags = stop_safety_flags(float(self.latitude), float(self.longitude))
+        super().save(*args, **kwargs)
 
 
 class StudentStopAssignment(TimeStampedUUIDModel):

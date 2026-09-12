@@ -1,0 +1,17 @@
+student_id,first_name,last_name,grade,school_id,home_address,latitude,longitude,eligible,wheelchair,max_ride_minutes
+SV-S-2001,Ava,Bennett,3,SV-EL,"112 Maple St, Summit Valley",40.0194,-83.0272,true,false,
+SV-S-2002,Leo,Kim,2,SV-EL,"120 Maple St, Summit Valley",40.0190,-83.0268,true,false,
+SV-S-2003,Mia,Torres,4,SV-EL,"88 Cedar Ct, Summit Valley",40.0177,-83.0230,true,false,
+SV-S-2004,Noah,Patel,1,SV-EL,"82 Cedar Ct, Summit Valley",40.0173,-83.0226,true,true,40
+SV-S-2005,Zoe,Nguyen,5,SV-EL,"244 Birch Ln, Summit Valley",40.0222,-83.0302,true,false,
+SV-S-2006,Eli,Johnson,2,SV-EL,"236 Birch Ln, Summit Valley",40.0218,-83.0298,true,false,
+SV-S-2007,Aria,Rossi,3,SV-EL,"418 Aspen Way, Summit Valley",40.0207,-83.0212,true,false,
+SV-S-2008,Owen,Walker,4,SV-EL,"410 Aspen Way, Summit Valley",40.0203,-83.0208,true,false,
+SV-S-2009,Isla,Hughes,7,SV-MS,"516 Willow Bend, Summit Valley",40.0140,-83.0334,true,false,
+SV-S-2010,Kai,Morales,8,SV-MS,"508 Willow Bend, Summit Valley",40.0136,-83.0330,true,true,45
+SV-S-2011,Lily,Foster,6,SV-MS,"79 Oak Ridge Rd, Summit Valley",40.0112,-83.0302,true,false,
+SV-S-2012,Max,Diaz,7,SV-MS,"73 Oak Ridge Rd, Summit Valley",40.0108,-83.0298,true,false,
+SV-S-2013,Nora,Bailey,8,SV-MS,"904 Pine Hollow Dr, Summit Valley",40.0092,-83.0390,true,false,
+SV-S-2014,Jude,Freeman,6,SV-MS,"896 Pine Hollow Dr, Summit Valley",40.0088,-83.0386,true,false,
+SV-S-2015,Ruby,Coleman,7,SV-MS,"35 Elm Cir, Summit Valley",40.0167,-83.0357,true,false,
+SV-S-2016,Finn,Barrett,8,SV-MS,"31 Elm Cir, Summit Valley",40.0163,-83.0353,true,false,

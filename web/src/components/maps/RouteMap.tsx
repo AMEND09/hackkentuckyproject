@@ -139,14 +139,10 @@ export function RouteMap({
         return;
       }
 
-      if (cameraLngRef.current == null) {
-        cameraLngRef.current = target.lng;
-        cameraLatRef.current = target.lat;
-        cameraBearingRef.current = target.heading ?? map.getBearing();
-      }
-
-      cameraLngRef.current += (target.lng - cameraLngRef.current) * 0.2;
-      cameraLatRef.current += (target.lat - cameraLatRef.current) * 0.2;
+      const prevLng = cameraLngRef.current ?? target.lng;
+      const prevLat = cameraLatRef.current ?? target.lat;
+      cameraLngRef.current = prevLng + (target.lng - prevLng) * 0.2;
+      cameraLatRef.current = prevLat + (target.lat - prevLat) * 0.2;
       cameraBearingRef.current = lerpAngleDegrees(
         cameraBearingRef.current,
         target.heading ?? cameraBearingRef.current,

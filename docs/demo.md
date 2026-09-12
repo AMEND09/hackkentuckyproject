@@ -16,7 +16,7 @@ P50/P90 travel models and the late classifier. Metrics screens show the disclaim
 
 ## Future production work
 
-Real map-matching APIs, student information system connectors, FERPA review, hardware AVL, certified routing, push notifications at scale, PostGIS spatial indexes, hardened JWT cookies.
+Real map-matching at scale, self-hosted OSRM extract for offline street matrix, student information system connectors, FERPA review, hardware AVL, certified routing, push notifications at scale, PostGIS spatial indexes, hardened JWT cookies.
 
 ---
 

@@ -30,7 +30,11 @@ N_ROWS = 22000
 def generate_synthetic_frame(n: int = N_ROWS, seed: int = SEED) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     distance = rng.uniform(0.2, 12.0, n)
-    planned = distance / rng.uniform(6, 14, n) * 3600  # naive planned seconds
+    # Planned speeds match what inference sees (OSRM street durations, roughly
+    # 18-42 km/h for urban/suburban bus legs). An older revision used 6-14 and
+    # produced planned times ~3x too slow, which made live legs look
+    # out-of-distribution and saturated the late classifier.
+    planned = distance / rng.uniform(18, 42, n) * 3600  # naive planned seconds
     hour = rng.choice(np.arange(6, 18), n)
     dow = rng.integers(0, 5, n)
     road = rng.integers(0, 3, n)  # 0 local, 1 arterial, 2 highway
@@ -61,7 +65,10 @@ def generate_synthetic_frame(n: int = N_ROWS, seed: int = SEED) -> pd.DataFrame:
     dwell = boarding * 18 + wc * 85
     actual = actual + dwell + rng.normal(0, 18 + 40 * traffic + 25 * rain + 20 * urban, n)
     actual = np.clip(actual, 25, None)
-    late = ((actual > planned * 1.15 + 40) | ((rush == 1) & (rain == 1) & (traffic > 0.5))).astype(int)
+    # Late means unexplained delay beyond normal boarding dwell — a leg is not
+    # "late" just for spending the expected boarding time (planned excludes
+    # dwell by construction, both in training and at inference).
+    late = ((actual > planned + dwell + 60) | ((rush == 1) & (rain == 1) & (traffic > 0.5))).astype(int)
 
     data = {
         "distance_km": distance,
