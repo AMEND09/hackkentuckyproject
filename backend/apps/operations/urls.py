@@ -15,4 +15,6 @@ urlpatterns = router.urls + [
     path("guardian/etas/", GuardianViewSet.as_view({"get": "etas"})),
     path("guardian/absent/", GuardianViewSet.as_view({"post": "mark_absent"})),
     path("guardian/history/", GuardianViewSet.as_view({"get": "history"})),
+    path("guardian/trip/<uuid:student_id>/", GuardianViewSet.as_view({"get": "trip_for_student"})),
+    path("guardian/claim/", GuardianViewSet.as_view({"post": "claim"})),
 ]

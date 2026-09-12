@@ -21,6 +21,7 @@ from common.permissions.roles import HasRole
 
 class UserSerializer(serializers.ModelSerializer):
     district_name = serializers.CharField(source="district.name", read_only=True, default=None)
+    full_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
@@ -29,6 +30,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "full_name",
             "phone",
             "role",
             "district",
@@ -36,7 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "last_login",
         )
-        read_only_fields = ("id", "last_login")
+        read_only_fields = ("id", "last_login", "full_name", "district_name")
 
 
 class LoginSerializer(serializers.Serializer):
@@ -69,13 +71,40 @@ class LoginView(APIView):
 login_view = LoginView.as_view()
 
 
+# Roles a user may self-assign when joining an existing district. Platform
+# admin is intentionally excluded — it is provisioned out of band only.
+JOINABLE_ROLES = (
+    UserRole.DISTRICT_ADMIN,
+    UserRole.PLANNER,
+    UserRole.DISPATCHER,
+    UserRole.DRIVER,
+    UserRole.GUARDIAN,
+)
+
+
 class RegisterSerializer(serializers.Serializer):
-    district_name = serializers.CharField(max_length=200)
+    """Self-service signup for both flows.
+
+    ``mode="create"`` (default) spins up a brand-new district and makes the
+    caller its administrator. ``mode="join"`` attaches the caller to an
+    existing district (looked up by ``join_code`` or ``district`` id) with the
+    ``role`` they select.
+    """
+
+    mode = serializers.ChoiceField(choices=("create", "join"), default="create")
     first_name = serializers.CharField(max_length=120)
     last_name = serializers.CharField(max_length=120)
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=40, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, min_length=8)
+
+    # create mode
+    district_name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+
+    # join mode
+    join_code = serializers.CharField(max_length=12, required=False, allow_blank=True)
+    district = serializers.UUIDField(required=False)
+    role = serializers.ChoiceField(choices=[r.value for r in JOINABLE_ROLES], required=False)
 
     def validate_email(self, value):
         value = value.strip().lower()
@@ -90,6 +119,31 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(list(exc.messages))
         return value
 
+    def validate(self, attrs):
+        mode = attrs.get("mode", "create")
+        if mode == "create":
+            if not (attrs.get("district_name") or "").strip():
+                raise serializers.ValidationError({"district_name": "District or organization name is required."})
+        else:  # join
+            if not attrs.get("role"):
+                raise serializers.ValidationError({"role": "Choose the role you are joining as."})
+            district = _resolve_join_district(attrs.get("join_code"), attrs.get("district"))
+            if district is None:
+                raise serializers.ValidationError(
+                    {"join_code": "No active district matches that code or selection."}
+                )
+            attrs["_district"] = district
+        return attrs
+
+
+def _resolve_join_district(join_code: str | None, district_id) -> District | None:
+    qs = District.objects.filter(is_active=True)
+    if join_code:
+        return qs.filter(join_code__iexact=join_code.strip()).first()
+    if district_id:
+        return qs.filter(id=district_id).first()
+    return None
+
 
 def _unique_slug(name: str) -> str:
     base = slugify(name) or "district"
@@ -100,10 +154,11 @@ def _unique_slug(name: str) -> str:
 
 
 class RegisterView(APIView):
-    """Self-service signup: creates a district and its first district admin.
+    """Self-service signup.
 
-    Also provisions a default policy and depot so the account can generate
-    routes immediately after importing roster data.
+    Create mode provisions a district, its default policy, and a starter depot
+    so the new admin can import a roster and generate routes right away. Join
+    mode attaches the caller to an existing district in the role they pick.
     """
 
     permission_classes = [AllowAny]
@@ -115,30 +170,35 @@ class RegisterView(APIView):
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
 
-        district = District.objects.create(
-            name=data["district_name"].strip(),
-            slug=_unique_slug(data["district_name"]),
-            contact_email=data["email"],
-            contact_phone=data.get("phone", ""),
-        )
-        DistrictPolicy.objects.get_or_create(district=district)
-        # Default depot so vehicles and the optimizer have a start/anchor point.
-        # Matches the provided starter CSV cluster; editable later.
-        Depot.objects.create(
-            district=district,
-            name="Main Bus Depot",
-            address="1200 Depot Rd, Summit Valley",
-            latitude=40.0155,
-            longitude=-83.0300,
-            is_active=True,
-        )
+        if data.get("mode", "create") == "join":
+            district = data["_district"]
+            role = data["role"]
+        else:
+            district = District.objects.create(
+                name=data["district_name"].strip(),
+                slug=_unique_slug(data["district_name"]),
+                contact_email=data["email"],
+                contact_phone=data.get("phone", ""),
+            )
+            DistrictPolicy.objects.get_or_create(district=district)
+            # Default depot so vehicles and the optimizer have a start/anchor point.
+            Depot.objects.create(
+                district=district,
+                name="Main Bus Depot",
+                address="1200 Depot Rd, Summit Valley",
+                latitude=40.0155,
+                longitude=-83.0300,
+                is_active=True,
+            )
+            role = UserRole.DISTRICT_ADMIN
+
         user = User.objects.create_user(
             email=data["email"],
             password=data["password"],
             first_name=data["first_name"].strip(),
             last_name=data["last_name"].strip(),
             phone=data.get("phone", ""),
-            role=UserRole.DISTRICT_ADMIN,
+            role=role,
             district=district,
             is_active=True,
         )
@@ -146,6 +206,48 @@ class RegisterView(APIView):
 
 
 register_view = RegisterView.as_view()
+
+
+class PublicDistrictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = District
+        fields = ("id", "name", "state")
+
+
+class PublicDistrictListView(APIView):
+    """Unauthenticated list of joinable districts for the sign-up picker."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        qs = District.objects.filter(is_active=True).order_by("name")
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            qs = qs.filter(name__icontains=search)
+        return Response(PublicDistrictSerializer(qs[:100], many=True).data)
+
+
+public_districts_view = PublicDistrictListView.as_view()
+
+
+class DistrictLookupView(APIView):
+    """Resolve a join code to a district name so the UI can confirm before signup."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        code = (request.data.get("join_code") or "").strip()
+        if not code:
+            raise RouteWiseError("Enter a join code.", code="MISSING_CODE", status_code=400)
+        district = District.objects.filter(is_active=True, join_code__iexact=code).first()
+        if district is None:
+            raise RouteWiseError("No district matches that join code.", code="INVALID_JOIN_CODE", status_code=404)
+        return Response(PublicDistrictSerializer(district).data)
+
+
+district_lookup_view = DistrictLookupView.as_view()
 
 
 class LogoutView(APIView):
@@ -204,6 +306,7 @@ class DemoCredentialsView(APIView):
                     {"role": "dispatcher", "email": settings.DEMO_DISPATCHER_EMAIL, "label": "Dispatcher"},
                     {"role": "driver", "email": settings.DEMO_DRIVER_EMAIL, "label": "Driver"},
                     {"role": "guardian", "email": settings.DEMO_GUARDIAN_EMAIL, "label": "Guardian"},
+                    {"role": "guardian", "email": settings.DEMO_STUDENT_EMAIL, "label": "Student"},
                 ],
             }
         )

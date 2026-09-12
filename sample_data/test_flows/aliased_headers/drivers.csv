@@ -1,0 +1,4 @@
+emp_id,e_mail,firstname,lastname,mobile,cdl_exp,certs,shift
+SV-D-01,maya.driver@summitvalley.demo,Maya,Sullivan,614-555-0101,2027-08-31,"CDL-B,S,P",weekday_am
+SV-D-02,jordan.driver@summitvalley.demo,Jordan,Blake,614-555-0102,2026-12-15,"CDL-B,S,P",weekday_am
+SV-D-05,casey.driver@summitvalley.demo,Casey,Ng,614-555-0105,2028-01-12,"CDL-B,S",weekday_am

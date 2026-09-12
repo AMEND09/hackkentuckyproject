@@ -121,6 +121,18 @@ def validate_job(job: ImportJob) -> ImportJob:
         if job.import_type in {"schools", "students", "stops"}:
             _coord(_cell(row, mapping, "latitude"), "latitude", errors, i)
             _coord(_cell(row, mapping, "longitude"), "longitude", errors, i)
+        if job.import_type == "students":
+            school_id = _cell(row, mapping, "school_id")
+            known = set(job.district.schools.values_list("school_code", flat=True))
+            if school_id and known and school_id not in known:
+                errors.append(
+                    (
+                        i,
+                        "school_id",
+                        "UNKNOWN_SCHOOL",
+                        f"school_id {school_id} is not in this district. Import schools.csv first.",
+                    )
+                )
         if job.import_type == "vehicles":
             cap = _cell(row, mapping, "capacity")
             try:
@@ -236,7 +248,7 @@ def _commit_students(district, rows, mapping):
         sid = _cell(row, mapping, "student_id")
         school = schools.get(_cell(row, mapping, "school_id"))
         if not school:
-            school = next(iter(schools.values()))
+            continue
         elig = Student.Eligibility.ELIGIBLE if _truthy(_cell(row, mapping, "eligible") or "true") else Student.Eligibility.INELIGIBLE
         ride = _cell(row, mapping, "max_ride_minutes")
         student, _ = Student.objects.update_or_create(

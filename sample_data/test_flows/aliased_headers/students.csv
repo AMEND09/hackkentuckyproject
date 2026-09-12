@@ -1,0 +1,8 @@
+SIS_ID,First,Last Name,Grade Level,School Code,Street Address,Home_Lat,Home_Lng,Eligibility,ADA,Max_Ride
+SV-S-2001,Ava,Bennett,3,SV-EL,"112 Maple St, Summit Valley",40.0194,-83.0272,eligible,false,
+SV-S-2002,Leo,Kim,2,SV-EL,"120 Maple St, Summit Valley",40.0190,-83.0268,eligible,false,
+SV-S-2003,Mia,Torres,4,SV-EL,"88 Cedar Ct, Summit Valley",40.0177,-83.0230,eligible,false,
+SV-S-2004,Noah,Patel,1,SV-EL,"82 Cedar Ct, Summit Valley",40.0173,-83.0226,eligible,true,40
+SV-S-2010,Kai,Morales,8,SV-MS,"508 Willow Bend, Summit Valley",40.0136,-83.0330,eligible,true,45
+SV-S-2011,Lily,Foster,6,SV-MS,"79 Oak Ridge Rd, Summit Valley",40.0112,-83.0302,eligible,false,
+SV-S-2020,Sam,Reed,10,SV-HS,"90 Ridge Blvd, Summit Valley",40.0062,-83.0268,eligible,false,

@@ -1,0 +1,4 @@
+vehicle_number,license_plate,capacity,wheelchair_capacity,vehicle_type,status,depot_name
+SV-BUS-01,SV-1001,72,0,standard,active,Main Bus Depot
+,SV-NO-NUM,not-a-number,0,standard,active,Main Bus Depot
+SV-BUS-BAD,SV-0000,0,0,standard,active,Unknown Yard

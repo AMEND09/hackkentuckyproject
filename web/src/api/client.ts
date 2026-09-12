@@ -15,6 +15,10 @@ export function setAccessToken(token: string | null) {
   else sessionStorage.removeItem("rw_access");
 }
 
+export function getAccessToken() {
+  return accessToken;
+}
+
 export function getRefresh() {
   return localStorage.getItem("rw_refresh");
 }

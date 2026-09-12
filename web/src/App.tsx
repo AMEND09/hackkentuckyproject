@@ -2,9 +2,11 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./auth/AuthProvider";
 import { AppShell } from "./components/layout/AppShell";
+import { WordmarkWipe } from "./components/brand/WordmarkWipe";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ChooseWorkspacePage } from "./pages/ChooseWorkspacePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { SchoolsPage } from "./pages/SchoolsPage";
 import { StudentsPage } from "./pages/StudentsPage";
@@ -20,17 +22,15 @@ import { DrivePage } from "./pages/DrivePage";
 import { SchoolDetailPage } from "./pages/SchoolDetailPage";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { AdminPage } from "./pages/AdminPage";
+import { LivePage } from "./pages/LivePage";
 import type { Role } from "./types";
 
 function Guard({ children, roles }: { children: ReactNode; roles?: Role[] }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-canvas">
-        <div className="glass px-8 py-6 text-center">
-          <div className="h-8 w-8 mx-auto mb-3 rounded-full border-2 border-route border-t-transparent animate-spin" />
-          <p className="text-sm font-medium text-slate">Loading session…</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-white" role="status" aria-label="Loading session">
+        <WordmarkWipe size="md" loop />
       </div>
     );
   }
@@ -48,6 +48,14 @@ export function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/choose-workspace"
+        element={
+          <Guard>
+            <ChooseWorkspacePage />
+          </Guard>
+        }
+      />
 
       {/* Authenticated app — everything below requires a session */}
       <Route
@@ -59,6 +67,7 @@ export function App() {
         }
       >
         <Route index element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="live" element={<LivePage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="schools" element={<SchoolsPage />} />
         <Route path="schools/:id" element={<SchoolDetailPage />} />

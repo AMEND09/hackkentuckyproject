@@ -175,6 +175,7 @@ DEMO_PLANNER_EMAIL = env("DEMO_PLANNER_EMAIL", default="planner@jefferson.demo")
 DEMO_DISPATCHER_EMAIL = env("DEMO_DISPATCHER_EMAIL", default="dispatcher@jefferson.demo")
 DEMO_DRIVER_EMAIL = env("DEMO_DRIVER_EMAIL", default="driver@jefferson.demo")
 DEMO_GUARDIAN_EMAIL = env("DEMO_GUARDIAN_EMAIL", default="guardian@jefferson.demo")
+DEMO_STUDENT_EMAIL = env("DEMO_STUDENT_EMAIL", default="student@jefferson.demo")
 
 # Street-snapped driver path (OSRM public demo). No API key required.
 OSRM_BASE_URL = env("OSRM_BASE_URL", default="https://router.project-osrm.org")

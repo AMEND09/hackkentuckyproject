@@ -27,6 +27,12 @@ LAST = [
 ]
 
 
+def _claim(student) -> str:
+    prefix = (student.first_name or "XXX")[:3].upper().ljust(3, "X")
+    digits = "".join(ch for ch in (student.external_id or "") if ch.isdigit())[-3:].zfill(3)
+    return f"{prefix}{digits}"
+
+
 class Command(BaseCommand):
     help = "Seed the fictional Jefferson Demo Schools district and demo users."
 
@@ -53,6 +59,9 @@ class Command(BaseCommand):
             self._depots(district)
             self._vehicles(district, list(district.depots.order_by("name")))
             self._drivers(district)
+            students = list(district.students.order_by("external_id"))
+            if students:
+                self._guardians(district, students, rng)
             self._ensure_plans_and_ops(district, schools, rng)
             self.stdout.write(self.style.SUCCESS(f"Refreshed live demo data for {district.name}."))
             return
@@ -147,6 +156,7 @@ class Command(BaseCommand):
             (settings.DEMO_DISPATCHER_EMAIL, "Casey", "Nguyen", UserRole.DISPATCHER, district, False),
             (settings.DEMO_DRIVER_EMAIL, "Maya", "Chen", UserRole.DRIVER, district, False),
             (settings.DEMO_GUARDIAN_EMAIL, "Alex", "Bennett", UserRole.GUARDIAN, district, False),
+            (settings.DEMO_STUDENT_EMAIL, "Mia", "Santos", UserRole.GUARDIAN, district, False),
         ]
         for email, first, last, role, dist, staff in specs:
             user, created = User.objects.get_or_create(
@@ -351,13 +361,36 @@ class Command(BaseCommand):
 
     def _guardians(self, district, students, rng):
         guser = User.objects.get(email=settings.DEMO_GUARDIAN_EMAIL)
-        GuardianStudentLink.objects.update_or_create(
-            guardian=guser,
-            student=students[0],
-            defaults={"relationship": "parent", "is_verified": True, "notification_preferences": {"eta": True, "delay": True}},
-        )
+        # Demo family sees two riders so Today/Track match the DART screens.
+        for student in students[:2]:
+            GuardianStudentLink.objects.update_or_create(
+                guardian=guser,
+                student=student,
+                defaults={"relationship": "parent", "is_verified": True, "notification_preferences": {"eta": True, "delay": True, "school": False}},
+            )
+        # Self-guardian: a student account linked to their own Student record.
+        if len(students) > 2:
+            rider = students[2]
+            suser, _ = User.objects.get_or_create(
+                email=settings.DEMO_STUDENT_EMAIL,
+                defaults={
+                    "first_name": rider.first_name,
+                    "last_name": rider.last_name,
+                    "role": UserRole.GUARDIAN,
+                    "district": district,
+                },
+            )
+            suser.set_password(settings.DEMO_PASSWORD)
+            suser.save()
+            GuardianStudentLink.objects.update_or_create(
+                guardian=suser,
+                student=rider,
+                defaults={"relationship": "self", "is_verified": True, "notification_preferences": {"eta": True, "delay": True}},
+            )
+            self.stdout.write(f"  Student self-view: {settings.DEMO_STUDENT_EMAIL} → {rider.first_name} (code {_claim(rider)})")
+        self.stdout.write(f"  Guardian rider codes: {', '.join(_claim(s) for s in students[:3])}")
         # a few extra fictional guardians
-        for i, student in enumerate(students[1:8], start=2):
+        for i, student in enumerate(students[3:9], start=2):
             email = f"guardian{i}@jefferson.demo"
             user, _ = User.objects.get_or_create(
                 email=email,
@@ -544,15 +577,42 @@ class Command(BaseCommand):
                 AuditLog.objects.create(
                     actor=actor, action=action, resource_type=rtype, resource_id=rid, district=district, metadata={"seed": True}
                 )
-        if guardian and not Notification.objects.filter(user=guardian).exists():
-            Notification.objects.create(
-                district=district,
-                user=guardian,
-                title="Morning pickup reminder",
-                body="Ava's bus is on the way. This is a synthetic demo notification — not a real student alert.",
-                event_type="trip.eta.updated",
-                payload={},
-            )
+        if guardian and Notification.objects.filter(user=guardian).count() < 3:
+            Notification.objects.filter(user=guardian, event_type="trip.eta.updated").delete()
+            for title, body, event, payload, read in (
+                (
+                    "Route is running late",
+                    "About 6 minutes behind. Pickup is later than the scheduled time. This is a synthetic demo notification.",
+                    "trip.delay",
+                    {"kind": "delay"},
+                    False,
+                ),
+                (
+                    "Bus has departed the depot",
+                    "Your rider's morning run is underway. Arrival estimates will update as the bus moves.",
+                    "trip.started",
+                    {},
+                    False,
+                ),
+                (
+                    "Afternoon route unchanged",
+                    "Drop-off is planned for the usual stop this afternoon.",
+                    "route.notice",
+                    {},
+                    True,
+                ),
+            ):
+                Notification.objects.get_or_create(
+                    user=guardian,
+                    title=title,
+                    defaults={
+                        "district": district,
+                        "body": body,
+                        "event_type": event,
+                        "payload": payload,
+                        "is_read": read,
+                    },
+                )
         if dispatcher and not Notification.objects.filter(user=dispatcher, event_type="alert.created").exists():
             Notification.objects.create(
                 district=district,

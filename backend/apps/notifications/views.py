@@ -25,3 +25,8 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         n.is_read = True
         n.save(update_fields=["is_read"])
         return Response(NotificationSerializer(n).data)
+
+    @action(detail=False, methods=["post"], url_path="read-all")
+    def read_all(self, request):
+        updated = self.get_queryset().filter(is_read=False).update(is_read=True)
+        return Response({"ok": True, "updated": updated})

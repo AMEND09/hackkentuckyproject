@@ -1,0 +1,4 @@
+employee_id,email,first_name,last_name,phone,license_expiration,endorsements,availability
+SV-D-01,maya.driver@summitvalley.demo,Maya,Sullivan,614-555-0101,2027-08-31,"CDL-B,S,P",weekday_am
+SV-D-BAD,not-an-email,No,Email,614-555-0199,2027-01-01,CDL-B,weekday_am
+,missing.id@summitvalley.demo,Missing,Id,614-555-0188,2027-01-01,CDL-B,weekday_am

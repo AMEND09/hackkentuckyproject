@@ -1,5 +1,18 @@
 from common.utilities.models import TenantModel, TimeStampedUUIDModel
 from django.db import models
+from django.utils.crypto import get_random_string
+
+# Unambiguous alphabet (no 0/O/1/I) for human-friendly, shareable join codes.
+JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+JOIN_CODE_LENGTH = 6
+
+
+def generate_join_code() -> str:
+    """Return a unique, human-friendly district join code (e.g. ``K7QP2M``)."""
+    while True:
+        code = get_random_string(JOIN_CODE_LENGTH, JOIN_CODE_ALPHABET)
+        if not District.objects.filter(join_code=code).exists():
+            return code
 
 
 class District(TimeStampedUUIDModel):
@@ -9,10 +22,21 @@ class District(TimeStampedUUIDModel):
     timezone = models.CharField(max_length=64, default="America/Kentucky/Louisville")
     contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=40, blank=True)
+    join_code = models.CharField(
+        max_length=12,
+        unique=True,
+        blank=True,
+        help_text="Shareable code staff and families use to join this district.",
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["name"]
+
+    def save(self, *args, **kwargs):
+        if not self.join_code:
+            self.join_code = generate_join_code()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.name

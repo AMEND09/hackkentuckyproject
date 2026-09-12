@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { api } from "../../src/api/client";
+import { useDistrictLive } from "../../src/live/DistrictLiveProvider";
+import { ScreenHeader } from "../../src/components/ui/ScreenHeader";
+import { colors } from "../../src/theme";
 
 export default function DriverTrip() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,6 +57,8 @@ export default function DriverTrip() {
     mutationFn: () => api.post("/incidents/", { trip: id, type: "other", severity: "medium", description: incident || "Driver report" }),
   });
 
+  const { positions } = useDistrictLive();
+  const live = id ? positions[String(id)] : undefined;
   const stops = trip?.stops || [];
   const pos = trip?.last_position;
   const g = trip?.guidance;
@@ -67,14 +72,25 @@ export default function DriverTrip() {
       longitude: Number(s.longitude),
     }));
   }, [trip?.path, stops]);
-  const bus = pos
-    ? { latitude: Number(pos.latitude), longitude: Number(pos.longitude) }
-    : coords[0];
+  const bus = live
+    ? { latitude: live.lat, longitude: live.lng }
+    : pos
+      ? { latitude: Number(pos.latitude), longitude: Number(pos.longitude) }
+      : coords[0];
 
-  if (!trip) return <Text>Loading…</Text>;
+  if (!trip) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <ScreenHeader back title="Route" />
+        <Text style={{ padding: 22, color: colors.muted }}>Loading route…</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#F4F1EA" }} contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <ScreenHeader back title={trip.route_code} subtitle={live ? "District live demo" : trip.status} />
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 36 }}>
       <View style={{ backgroundColor: "#0B1F3A", padding: 16, borderRadius: 12 }}>
         <Text style={{ color: "#9DB7D8", fontSize: 12 }}>{trip.route_code}</Text>
         <Text style={{ color: "white", fontSize: 22, fontWeight: "700" }}>{g?.instruction || "Follow planned stops"}</Text>
@@ -84,6 +100,7 @@ export default function DriverTrip() {
         <Text style={{ color: "white" }}>
           {g?.follows_streets ? "Following streets" : "Straight-line fallback"}
           {trip.is_simulated ? " · Simulated GPS" : ""}
+          {live ? " · District live demo" : ""}
         </Text>
       </View>
       {Platform.OS !== "web" && bus ? (
@@ -156,7 +173,8 @@ export default function DriverTrip() {
         style={{ backgroundColor: "white", padding: 12, borderRadius: 8, minHeight: 48 }}
       />
       <Btn label="Report incident" onPress={() => report.mutate()} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

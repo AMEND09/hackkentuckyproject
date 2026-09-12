@@ -15,6 +15,7 @@ from apps.operations.serializers import (
     TripListSerializer,
 )
 from apps.operations.services.lifecycle import broadcast_event, ingest_gps, refresh_trip_eta
+from apps.operations.services.rider_routes import boarding_for_student, guardian_route_ids, rider_claim_code
 from apps.routing.models import RouteStopStudent
 from common.exceptions.errors import RouteWiseError
 from common.permissions.roles import HasRole
@@ -47,6 +48,13 @@ class TripViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user.role == UserRole.DRIVER:
             return qs.filter(driver__user=user)
+        if user.role == UserRole.GUARDIAN:
+            student_ids = list(
+                GuardianStudentLink.objects.filter(guardian=user, is_verified=True).values_list(
+                    "student_id", flat=True
+                )
+            )
+            return qs.filter(route_id__in=guardian_route_ids(student_ids))
         if self.request.query_params.get("at_risk"):
             qs = qs.order_by("-late_probability", "-current_delay_seconds")
         return qs
@@ -260,12 +268,8 @@ class GuardianViewSet(viewsets.ViewSet):
         payload = []
         today = timezone.localdate()
         for link in self._links(request):
-            rss = (
-                RouteStopStudent.objects.filter(student=link.student, action="board")
-                .select_related("route_stop__route")
-                .first()
-            )
-            if not rss:
+            stop, route = boarding_for_student(link.student)
+            if not stop or not route:
                 payload.append(
                     {
                         "student_id": str(link.student_id),
@@ -277,26 +281,50 @@ class GuardianViewSet(viewsets.ViewSet):
                         "p50_eta": None,
                         "is_simulated": False,
                         "on_time": True,
+                        "trip_id": None,
+                        "route_code": None,
+                        "school_name": link.student.school.name if link.student.school_id else None,
+                        "current_stop_sequence": 0,
+                        "stop_count": 0,
+                        "my_stop_sequence": None,
+                        "late_probability": 0.0,
+                        "latitude": None,
+                        "longitude": None,
+                        "heading": None,
                     }
                 )
                 continue
-            trip = (
-                Trip.objects.filter(route=rss.route_stop.route, service_date=today)
-                .order_by("-created_at")
-                .first()
-            )
+            trip = Trip.objects.filter(route=route, service_date=today).order_by("-created_at").first()
             delay = trip.current_delay_seconds if trip else 0
+            pos = trip.positions.order_by("-timestamp").first() if trip else None
+            school_name = None
+            if trip and trip.route.school_id:
+                school_name = trip.route.school.name
+            elif route.school_id:
+                school_name = route.school.name
+            elif link.student.school_id:
+                school_name = link.student.school.name
             payload.append(
                 {
                     "student_id": str(link.student_id),
                     "student_first_name": link.student.first_name,
-                    "stop_name": rss.route_stop.name,
-                    "scheduled_pickup": rss.route_stop.scheduled_arrival,
+                    "stop_name": stop.name,
+                    "scheduled_pickup": stop.scheduled_arrival,
                     "status": trip.status if trip else "scheduled",
                     "delay_seconds": delay,
                     "p50_eta": trip.current_p50_eta if trip else None,
                     "is_simulated": bool(trip.is_simulated) if trip else False,
                     "on_time": delay < 180,
+                    "trip_id": str(trip.id) if trip else None,
+                    "route_code": (trip.route.route_code if trip else route.route_code),
+                    "school_name": school_name,
+                    "current_stop_sequence": trip.current_stop_sequence if trip else 0,
+                    "stop_count": route.stops.count(),
+                    "my_stop_sequence": stop.sequence,
+                    "late_probability": trip.late_probability if trip else 0.0,
+                    "latitude": float(pos.latitude) if pos else None,
+                    "longitude": float(pos.longitude) if pos else None,
+                    "heading": float(pos.heading) if pos else None,
                 }
             )
         return Response(GuardianETASerializer(payload, many=True).data)
@@ -306,22 +334,102 @@ class GuardianViewSet(viewsets.ViewSet):
         link = self._links(request).filter(student_id=student_id).first()
         if not link:
             raise RouteWiseError("Student is not linked to this guardian.", code="FORBIDDEN", status_code=403)
-        rss = RouteStopStudent.objects.filter(student=link.student).select_related("route_stop__route").first()
-        if rss:
+        note = (request.data.get("note") or "").strip()
+        scope = request.data.get("scope") or "am"
+        stop, route = boarding_for_student(link.student)
+        if stop and route:
             today = timezone.localdate()
-            trip = Trip.objects.filter(route=rss.route_stop.route, service_date=today).first()
+            trip = Trip.objects.filter(route=route, service_date=today).first()
             if trip:
-                event, _ = StopEvent.objects.get_or_create(trip=trip, route_stop=rss.route_stop)
+                event, _ = StopEvent.objects.get_or_create(trip=trip, route_stop=stop)
                 event.absent_count = (event.absent_count or 0) + 1
-                event.notes = (event.notes or "") + f" Guardian marked {link.student.first_name} absent."
+                extra = f" Guardian marked {link.student.first_name} absent ({scope})."
+                if note:
+                    extra += f" Note: {note}"
+                event.notes = (event.notes or "") + extra
                 event.save()
-        return Response({"ok": True, "student_id": str(link.student_id)})
+        return Response({"ok": True, "student_id": str(link.student_id), "scope": scope})
+
+    def trip_for_student(self, request, student_id=None):
+        """Privacy-safe trip path + stops for one linked rider. No manifest."""
+        from apps.routing.services.street_router import route_geometry
+
+        link = self._links(request).filter(student_id=student_id).first()
+        if not link:
+            raise RouteWiseError("Student is not linked to this guardian.", code="FORBIDDEN", status_code=403)
+        stop, route = boarding_for_student(link.student)
+        if not stop or not route:
+            return Response({"student_id": str(link.student_id), "trip_id": None, "stops": [], "path": []})
+        today = timezone.localdate()
+        trip = Trip.objects.filter(route=route, service_date=today).order_by("-created_at").first()
+        geo = route_geometry(route, fetch=True)
+        coords = geo.get("coordinates") or []
+        if len(coords) < 2:
+            coords = [[float(s.longitude), float(s.latitude)] for s in route.stops.all()]
+        stops = [
+            {
+                "id": str(s.id),
+                "name": s.name,
+                "sequence": s.sequence,
+                "kind": s.kind,
+                "latitude": float(s.latitude),
+                "longitude": float(s.longitude),
+                "scheduled_arrival": s.scheduled_arrival,
+            }
+            for s in route.stops.all()
+        ]
+        return Response(
+            {
+                "student_id": str(link.student_id),
+                "student_first_name": link.student.first_name,
+                "trip_id": str(trip.id) if trip else None,
+                "route_code": route.route_code,
+                "school_name": route.school.name if route.school_id else None,
+                "status": trip.status if trip else "scheduled",
+                "current_stop_sequence": trip.current_stop_sequence if trip else 0,
+                "current_p50_eta": trip.current_p50_eta if trip else None,
+                "is_simulated": bool(trip.is_simulated) if trip else False,
+                "my_stop_sequence": stop.sequence,
+                "my_stop_name": stop.name,
+                "path": coords,
+                "stops": stops,
+            }
+        )
+
+    def claim(self, request):
+        from apps.transportation.models import Student
+        from apps.transportation.serializers import GuardianChildSerializer
+
+        code = (request.data.get("code") or "").strip().upper().replace("-", "").replace(" ", "")
+        if len(code) < 4:
+            raise RouteWiseError("Enter the six-character rider code from your district.", code="INVALID_CODE")
+        match = None
+        for student in Student.objects.filter(district=request.user.district, is_active=True):
+            if rider_claim_code(student) == code:
+                match = student
+                break
+        if not match:
+            raise RouteWiseError("That code is not valid. Contact the transportation office.", code="INVALID_CODE")
+        link, created = GuardianStudentLink.objects.get_or_create(
+            guardian=request.user,
+            student=match,
+            defaults={"relationship": "parent", "is_verified": True, "notification_preferences": {"eta": True, "delay": True}},
+        )
+        if not link.is_verified:
+            link.is_verified = True
+            link.save(update_fields=["is_verified"])
+        return Response(
+            {
+                "ok": True,
+                "already_linked": not created,
+                "student": GuardianChildSerializer(match).data,
+                "code": rider_claim_code(match),
+            }
+        )
 
     def history(self, request):
         student_ids = list(self._links(request).values_list("student_id", flat=True))
-        route_ids = RouteStopStudent.objects.filter(student_id__in=student_ids).values_list(
-            "route_stop__route_id", flat=True
-        )
+        route_ids = guardian_route_ids(student_ids)
         trips = Trip.objects.filter(route_id__in=route_ids).order_by("-service_date")[:20]
         # Do not leak other students
         data = []

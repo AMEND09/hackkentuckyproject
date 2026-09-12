@@ -131,6 +131,32 @@ def get_column_mapper() -> ColumnMapper:
     return HeuristicColumnMapper()
 
 
+IMPORT_ORDER = ("schools", "stops", "students", "vehicles", "drivers")
+
+
+def detect_import_type(headers: list[str], filename: str = "") -> str:
+    """Guess schools / students / stops / vehicles / drivers from the file name or columns."""
+    stem = _norm(filename.rsplit("/", 1)[-1].rsplit(".", 1)[0])
+    for kind in IMPORT_ORDER:
+        singular = kind[:-1] if kind.endswith("s") else kind
+        if stem in {kind, singular} or stem.endswith(f"_{kind}") or stem.endswith(f"_{singular}"):
+            return kind
+        if stem.startswith(f"{kind}_") or stem.startswith(f"{singular}_"):
+            return kind
+    mapper = HeuristicColumnMapper()
+    best, best_score = "students", -1
+    for kind in IMPORT_ORDER:
+        proposal = mapper.propose(kind, headers, [])
+        mapped = sum(1 for field in REQUIRED[kind] if proposal["mapping"][field]["header"])
+        extra = sum(1 for field, val in proposal["mapping"].items() if val.get("header"))
+        score = mapped * 10 + extra
+        if mapped == len(REQUIRED[kind]) and score > best_score:
+            best, best_score = kind, score
+        elif mapped >= 2 and score > best_score:
+            best, best_score = kind, score
+    return best
+
+
 def read_csv_bytes(data: bytes) -> tuple[list[str], list[dict]]:
     text = data.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))

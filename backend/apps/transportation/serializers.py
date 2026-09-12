@@ -50,6 +50,7 @@ class DriverProfileSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     school_name = serializers.CharField(source="school.name", read_only=True)
+    rider_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -70,8 +71,14 @@ class StudentSerializer(serializers.ModelSerializer):
             "requires_wheelchair",
             "max_ride_time_override_minutes",
             "is_active",
+            "rider_code",
         )
-        read_only_fields = ("id", "district")
+        read_only_fields = ("id", "district", "rider_code")
+
+    def get_rider_code(self, obj):
+        from apps.operations.services.rider_routes import rider_claim_code
+
+        return rider_claim_code(obj)
 
 
 class GuardianChildSerializer(serializers.ModelSerializer):
@@ -81,7 +88,7 @@ class GuardianChildSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ("id", "first_name", "grade", "school", "school_name", "requires_wheelchair")
+        fields = ("id", "first_name", "last_name", "grade", "school", "school_name", "requires_wheelchair")
 
 
 class BusStopSerializer(serializers.ModelSerializer):

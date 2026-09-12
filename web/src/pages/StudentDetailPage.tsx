@@ -26,6 +26,15 @@ export function StudentDetailPage() {
             {student.external_id} · grade {student.grade} · {student.school_name} · {student.eligibility}
             {student.requires_wheelchair ? " · wheelchair access" : ""}
           </p>
+          {student.rider_code && (
+            <p className="mt-3 rounded-xl border border-line bg-canvas px-4 py-3 text-sm">
+              Parent rider code{" "}
+              <span className="font-mono text-base font-bold tracking-[0.18em] text-navy">{student.rider_code}</span>
+              <span className="mt-1 block text-xs text-slate">
+                A parent enters this in the app (or on Live) to see this rider's bus when the live demo starts.
+              </span>
+            </p>
+          )}
           <p className="text-sm text-slate mt-2 flex items-center gap-1">
             <MapPin size={14} /> {student.home_address}
           </p>

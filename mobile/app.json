@@ -1,23 +1,51 @@
 {
   "expo": {
-    "name": "RouteWise",
-    "slug": "routewise",
-    "scheme": "routewise",
+    "name": "DART",
+    "slug": "dart",
+    "scheme": "dart",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/brand/app-icon.png",
+    "splash": {
+      "image": "./assets/brand/dart-wordmark.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
       "expo-secure-store",
       "expo-location",
-      "expo-asset"
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/brand/app-icon.png",
+          "color": "#2563EB",
+          "defaultChannel": "dart-rider"
+        }
+      ],
+      "@bacons/apple-targets"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "demo.routewise.app"
+      "bundleIdentifier": "com.app.dart",
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.app.dart"]
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "NSLocationWhenInUseUsageDescription": "DART uses your location only while you are signed in as a driver to share the bus position with linked families.",
+        "NSUserNotificationsUsageDescription": "DART sends arrival estimates and delay notices only for the riders linked to your account."
+      }
     },
     "android": {
-      "package": "demo.routewise.app"
+      "package": "com.app.dart"
     },
     "extra": {
       "router": {

@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { RouteMap } from "../components/maps/RouteMap";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useLiveOps } from "../live/LiveOpsProvider";
 import { interpolateAlong, headingAlongPath, lerpAngleDegrees, routeDurationMs, type RouteCoord } from "../utils/routePath";
 
 type Stop = {
@@ -55,8 +56,14 @@ export function DrivePage() {
     return (
       <div className="page-shell">
         <PageHeader
-          title="Route guide"
-          subtitle="Pick a run — the blue line follows Louisville streets. Tap Start to simulate the drive."
+          title={isGuardian ? "Your rider's route" : user?.role === "driver" ? "Today's assigned runs" : "Route guide"}
+          subtitle={
+            isGuardian
+              ? "View-only. The bus moves when the district starts the live demo."
+              : user?.role === "driver"
+                ? "Open a run to follow the street path. A live demo from dispatch moves the bus for you."
+                : "Pick a run — the blue line follows streets. Tap Start to simulate the drive."
+          }
         />
         <div className="grid md:grid-cols-2 gap-4">
           {rows.map((t) => (
@@ -79,7 +86,15 @@ export function DrivePage() {
               </div>
             </Link>
           ))}
-          {rows.length === 0 && <p className="text-slate col-span-2">No trips yet — publish a plan from Route planner.</p>}
+          {rows.length === 0 && (
+            <p className="text-slate col-span-2">
+              {isGuardian
+                ? "No route is linked to your riders yet. Ask the district for a rider code, then wait for the live demo."
+                : user?.role === "driver"
+                  ? "No trips are assigned to you. A planner needs to publish a plan that includes your driver profile."
+                  : "No trips yet — import a roster, generate a plan in Route planner, then publish."}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -89,8 +104,19 @@ export function DrivePage() {
 
 function DriveGuide({ tripId, isGuardian }: { tripId: string; isGuardian: boolean }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const { positions } = useLiveOps();
+  const districtLive = positions[tripId];
   const [sim, setSim] = useState(false);
   const [liveBus, setLiveBus] = useState<{ lat: number; lng: number; heading: number } | null>(null);
+  const { data: demoStatus } = useQuery({
+    queryKey: ["demo-status", user?.district],
+    enabled: Boolean(user?.district),
+    queryFn: async () => (await api.get(`/districts/${user?.district}/demo/status/`)).data,
+    refetchInterval: 4000,
+    retry: 1,
+  });
+  const districtDriving = Boolean(demoStatus?.running && (demoStatus.trip_ids || []).includes(tripId));
   const tRef = useRef(0);
   const animRef = useRef<number | null>(null);
   const simStartRef = useRef<number | null>(null);
@@ -181,7 +207,10 @@ function DriveGuide({ tripId, isGuardian }: { tripId: string; isGuardian: boolea
       heading: Number(pos.heading || 0),
     };
   }, [pos]);
-  const bus = liveBus ?? apiBus;
+  const demoBus = districtLive
+    ? { lat: districtLive.lat, lng: districtLive.lng, heading: districtLive.heading }
+    : null;
+  const bus = liveBus ?? demoBus ?? apiBus;
 
   const split = useMemo(() => {
     if (!street.length) return { done: [] as [number, number][], next: [] as [number, number][] };
@@ -220,7 +249,7 @@ function DriveGuide({ tripId, isGuardian }: { tripId: string; isGuardian: boolea
         className="h-full rounded-none border-0 shadow-none"
         fit={false}
         follow={bus}
-        followSmooth={sim}
+        followSmooth={sim || districtDriving}
         followDuration={700}
         lines={[
           { id: "done", color: "#94A3B8", width: 7, coords: split.done.length > 1 ? split.done : [] },
@@ -302,8 +331,13 @@ function DriveGuide({ tripId, isGuardian }: { tripId: string; isGuardian: boolea
           </ol>
         </div>
 
+        {districtDriving && (
+          <div className="glass px-3 py-2 text-xs font-semibold text-navy">
+            District live demo is moving this bus. Parents see the same GPS on web and mobile.
+          </div>
+        )}
         <div className="glass-dark p-3 flex flex-wrap gap-2">
-          {!isGuardian && (
+          {!isGuardian && !districtDriving && (
             <>
               <button
                 className="btn-route flex-1 min-w-[120px]"

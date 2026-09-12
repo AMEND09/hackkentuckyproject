@@ -79,8 +79,18 @@ def diagnose_infeasibility(school: School, students, stops_by_id, vehicles, driv
         for s in students:
             max_km = max(max_km, haversine_km(s.latitude, s.longitude, school.latitude, school.longitude))
         est_min = (max_km * 1.38 / 28) * 60
-        if est_min > policy.max_student_ride_minutes + 5:
-            reasons.append("Maximum ride-time rule too restrictive")
+        if max_km > 40:
+            reasons.append(
+                f"Students live about {int(max_km)} km from this school. "
+                "Pick the school that matches the roster, or drop a schools.csv "
+                "with the same school_id as the students, then generate again."
+            )
+        elif est_min > policy.max_student_ride_minutes + 5:
+            reasons.append(
+                f"Maximum ride time is {policy.max_student_ride_minutes} minutes, "
+                f"but the farthest student needs about {int(est_min)} minutes. "
+                "Raise Max ride minutes in Administration, then generate again."
+            )
         # Tight bell window
         window = policy.allowable_early_minutes - policy.min_arrival_buffer_minutes
         if window < 5 and est_min > 20:
@@ -136,6 +146,8 @@ def generate_plan(plan: RoutePlan, vehicle_ids=None, driver_ids=None, weights=No
         }
         or r.startswith("No approved")
         or r.startswith("Missing")
+        or r.startswith("Students live about")
+        or r.startswith("Maximum ride time")
     ]
     if hard:
         plan.status = RoutePlan.Status.FAILED

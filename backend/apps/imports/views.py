@@ -55,10 +55,17 @@ class ImportJobViewSet(TenantQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     def upload(self, request):
         uploaded = request.FILES.get("file")
         import_type = request.data.get("import_type")
-        if not uploaded or import_type not in ImportJob.ImportType.values:
+        if not uploaded:
             from common.exceptions.errors import RouteWiseError
 
-            raise RouteWiseError("file and import_type are required.", code="INVALID_IMPORT")
+            raise RouteWiseError("A CSV file is required.", code="INVALID_IMPORT")
+        if import_type not in ImportJob.ImportType.values:
+            from apps.imports.services.mapper import detect_import_type, read_csv_bytes
+
+            data = uploaded.read()
+            uploaded.seek(0)
+            headers, _rows = read_csv_bytes(data)
+            import_type = detect_import_type(headers, uploaded.name)
         job = ImportJob.objects.create(
             district=request.user.district,
             import_type=import_type,
@@ -66,6 +73,37 @@ class ImportJobViewSet(TenantQuerySetMixin, viewsets.ReadOnlyModelViewSet):
             created_by=request.user,
         )
         store_upload(job, uploaded)
+        return Response(ImportJobSerializer(job).data, status=201)
+
+    @action(detail=False, methods=["post"], url_path="ingest")
+    def ingest(self, request):
+        """Detect type, map columns, and commit in one drop."""
+        from common.exceptions.errors import RouteWiseError
+
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            raise RouteWiseError("A CSV file is required.", code="INVALID_IMPORT")
+        from apps.imports.services import commit_job, confirm_mapping, store_upload
+        from apps.imports.services.mapper import detect_import_type, read_csv_bytes
+
+        data = uploaded.read()
+        uploaded.seek(0)
+        headers, _rows = read_csv_bytes(data)
+        import_type = detect_import_type(headers, uploaded.name)
+        job = ImportJob.objects.create(
+            district=request.user.district,
+            import_type=import_type,
+            original_filename=uploaded.name,
+            created_by=request.user,
+        )
+        store_upload(job, uploaded)
+        mapping = job.proposed_column_mapping.get("mapping") or {}
+        try:
+            confirm_mapping(job, mapping)
+            job.refresh_from_db()
+            job = commit_job(job)
+        except RouteWiseError:
+            job.refresh_from_db()
         return Response(ImportJobSerializer(job).data, status=201)
 
     @action(detail=True, methods=["post"], url_path="confirm-mapping")
@@ -124,4 +162,30 @@ class ImportJobViewSet(TenantQuerySetMixin, viewsets.ReadOnlyModelViewSet):
             raise RouteWiseError("Unknown starter file.", code="NOT_FOUND", status_code=404)
         resp = HttpResponse(path.read_text(encoding="utf-8"), content_type="text/csv")
         resp["Content-Disposition"] = f'attachment; filename="{kind}.csv"'
+        return resp
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="test-flow/(?P<pack>[^/.]+)/(?P<kind>[^/.]+)",
+        permission_classes=[AllowAny],
+    )
+    def test_flow(self, request, pack=None, kind=None):
+        """CSV packs for exercising every onboarding import path."""
+        from pathlib import Path
+
+        from django.conf import settings as dj
+
+        allowed = {"happy_path", "aliased_headers", "required_only", "validation_errors"}
+        if pack not in allowed:
+            from common.exceptions.errors import RouteWiseError
+
+            raise RouteWiseError("Unknown test pack.", code="NOT_FOUND", status_code=404)
+        path = Path(dj.REPO_ROOT) / "sample_data" / "test_flows" / pack / f"{kind}.csv"
+        if not path.exists():
+            from common.exceptions.errors import RouteWiseError
+
+            raise RouteWiseError("Unknown test file.", code="NOT_FOUND", status_code=404)
+        resp = HttpResponse(path.read_text(encoding="utf-8"), content_type="text/csv")
+        resp["Content-Disposition"] = f'attachment; filename="{pack}-{kind}.csv"'
         return resp

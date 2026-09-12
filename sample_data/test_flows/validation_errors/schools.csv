@@ -1,0 +1,4 @@
+school_id,name,school_type,address,latitude,longitude,morning_bell,dismissal,is_active
+SV-EL,Summit Valley Elementary,elementary,"4200 Summit Ave, Summit Valley",40.0205,-83.0245,08:20,14:50,true
+,Missing Name School,elementary,"1 Nowhere",40.01,-83.03,08:00,15:00,true
+SV-BAD,Broken Coordinates,middle,"2 Nowhere",999,-999,08:00,15:00,true

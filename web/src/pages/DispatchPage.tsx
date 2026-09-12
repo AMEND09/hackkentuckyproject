@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Construction, Loader2, Navigation, Radar, ShieldAlert, Zap } from "lucide-react";
+import { AlertTriangle, Construction, Loader2, Navigation, Play, Radar, ShieldAlert, Square, Zap } from "lucide-react";
 import { api, errorMessage } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
 import { MapPoint, RouteMap } from "../components/maps/RouteMap";
 import { LoadingBlock } from "../components/ui/LoadingBlock";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -10,6 +11,8 @@ import { useHazardLayers } from "../hooks/useHazardLayers";
 import type { SafetyContext } from "../types";
 
 export function DispatchPage() {
+  const { user } = useAuth();
+  const districtId = user?.district;
   const qc = useQueryClient();
   const [showCorridors, setShowCorridors] = useState(true);
   const [showConstruction, setShowConstruction] = useState(true);
@@ -44,6 +47,25 @@ export function DispatchPage() {
     },
     onError: (e) => setScanMsg(errorMessage(e)),
   });
+  const { data: demoStatus } = useQuery({
+    queryKey: ["demo-status", districtId],
+    enabled: Boolean(districtId),
+    queryFn: async () => (await api.get(`/districts/${districtId}/demo/status/`)).data,
+    refetchInterval: 3000,
+    retry: 1,
+  });
+  const startDemo = useMutation({
+    mutationFn: () => api.post(`/districts/${districtId}/demo/start/`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["demo-status", districtId] });
+      qc.invalidateQueries({ queryKey: ["trips"] });
+    },
+  });
+  const stopDemo = useMutation({
+    mutationFn: () => api.post(`/districts/${districtId}/demo/stop/`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["demo-status", districtId] }),
+  });
+  const running = Boolean(demoStatus?.running);
   const rows = [...(trips?.results || [])].sort(
     (a: { late_probability: number }, b: { late_probability: number }) => b.late_probability - a.late_probability,
   );
@@ -75,8 +97,23 @@ export function DispatchPage() {
     <div className="page-shell">
       <PageHeader
         title="Dispatcher console"
-        subtitle="At-risk trips sorted first. Delay predictions are synthetic — click Follow route for turn-by-turn."
+        subtitle="At-risk trips sorted first. Start the live demo so parents and drivers see the same buses."
       />
+      <div className="flex flex-wrap items-center gap-3">
+        {running ? (
+          <button className="btn-danger" onClick={() => stopDemo.mutate()} disabled={stopDemo.isPending}>
+            <Square size={15} /> Stop live demo
+          </button>
+        ) : (
+          <button className="btn-primary" onClick={() => startDemo.mutate()} disabled={startDemo.isPending || !districtId}>
+            <Play size={15} /> {startDemo.isPending ? "Starting…" : "Start live demo"}
+          </button>
+        )}
+        {(startDemo.error || stopDemo.error) && (
+          <p className="text-sm text-bad">{errorMessage(startDemo.error || stopDemo.error)}</p>
+        )}
+        {running && <span className="text-sm font-semibold text-bad">LIVE — families and drivers are watching</span>}
+      </div>
 
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="kpi-card pl-5">

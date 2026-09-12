@@ -4,6 +4,9 @@
 .env.*.local
 !.env.example
 
+# Railway CLI link metadata (project is created in the dashboard)
+.railway/
+
 # Python
 backend/.venv/
 backend/venv/
@@ -37,6 +40,8 @@ web/coverage/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
+mobile/ios/
+mobile/android/
 *.tsbuildinfo
 
 # ML artifacts (trained models are generated locally)

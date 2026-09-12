@@ -190,28 +190,590 @@ h3,
 
 /* ---------------------------------------------------------------- Map: dart-inspired bus marker */
 .rw-bus-marker {
-  width: 34px;
-  height: 34px;
+  --bus-color: #2563eb;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
-  filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.4));
+  cursor: pointer;
+  filter: drop-shadow(0 3px 10px color-mix(in srgb, var(--bus-color) 45%, transparent));
+  transition: transform 0.15s ease;
+}
+.rw-bus-marker:hover,
+.rw-bus-marker.is-selected {
+  transform: scale(1.12);
 }
 .rw-bus-chevron {
   width: 0;
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-bottom: 24px solid #2563eb;
+  border-bottom: 24px solid var(--bus-color);
 }
 .rw-bus-ring {
   position: absolute;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  border: 2px solid rgba(37, 99, 235, 0.35);
+  border: 2px solid color-mix(in srgb, var(--bus-color) 40%, transparent);
   animation: pulseSoft 2s ease-in-out infinite;
+}
+.rw-bus-marker.is-selected .rw-bus-ring {
+  border-width: 2.5px;
+  border-color: color-mix(in srgb, var(--bus-color) 70%, transparent);
+}
+.rw-bus-label {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0b1120;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1px 5px;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(11, 17, 32, 0.08);
+}
+.rw-bus-marker.is-selected .rw-bus-label {
+  background: var(--bus-color);
+  color: #fff;
+  border-color: transparent;
 }
 
 .maplibregl-ctrl-group {
   @apply !rounded-lg !shadow-card !border !border-line overflow-hidden;
+}
+
+/* ---------------------------------------------------------------- Brand splash: wordmark wipe */
+.dart-wordmark-logo {
+  display: block;
+}
+.dart-wipe-once {
+  clip-path: inset(0 100% 0 0);
+  animation: dartWordmarkWipeOnce 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.dart-wipe-loop {
+  clip-path: inset(0 100% 0 0);
+  animation: dartWordmarkWipeLoop 2.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.dart-wordmark-edge {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  left: -2px;
+  width: 3px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0),
+    #2563eb 22%,
+    #2563eb 78%,
+    rgba(37, 99, 235, 0)
+  );
+  opacity: 0;
+}
+.dart-edge-once {
+  animation: dartWordmarkEdgeOnce 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.dart-edge-loop {
+  animation: dartWordmarkEdgeLoop 2.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/* Exit flash — scale up + dissolve into the page */
+.dart-splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  transition: background-color 0.7s ease-out, opacity 0.15s ease-out 0.55s;
+}
+.dart-splash-screen.is-exiting {
+  background-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+.dart-splash-mark {
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+}
+.dart-splash-screen.is-exiting .dart-splash-mark {
+  animation: dartWordmarkFlashOut 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.dart-splash-screen.is-exiting .dart-wordmark-edge {
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+@keyframes dartWordmarkFlashOut {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+  35% {
+    transform: scale(1.12);
+    opacity: 0.85;
+    filter: blur(0);
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+@keyframes dartWordmarkWipeOnce {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+@keyframes dartWordmarkWipeLoop {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 1;
+  }
+  46% {
+    clip-path: inset(0 0 0 0);
+  }
+  88% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+  }
+}
+@keyframes dartWordmarkEdgeOnce {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    transform: translateX(var(--wipe-travel, 260px));
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--wipe-travel, 260px));
+    opacity: 0;
+  }
+}
+@keyframes dartWordmarkEdgeLoop {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  46% {
+    transform: translateX(var(--wipe-travel, 260px));
+    opacity: 1;
+  }
+  60%,
+  100% {
+    transform: translateX(var(--wipe-travel, 260px));
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------- Brand splash: launch lockup */
+.dart-lockup-lift-once {
+  animation: dartLockupLiftOnce 1.2s cubic-bezier(0.3, 0, 0.2, 1) forwards;
+}
+.dart-lockup-lift-loop {
+  animation: dartLockupLiftLoop 3.2s cubic-bezier(0.3, 0, 0.2, 1) infinite;
+}
+.dart-lockup-tag-once {
+  animation: dartLockupTagOnce 1.2s ease-out 0.15s forwards;
+  opacity: 0;
+}
+.dart-lockup-tag-loop {
+  animation: dartLockupTagLoop 3.2s ease-out infinite;
+}
+@keyframes dartLockupLiftOnce {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dartLockupLiftLoop {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  40%,
+  86% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes dartLockupTagOnce {
+  from {
+    opacity: 0;
+    letter-spacing: 0.04em;
+  }
+  to {
+    opacity: 1;
+    letter-spacing: 0.14em;
+  }
+}
+@keyframes dartLockupTagLoop {
+  0%,
+  38% {
+    opacity: 0;
+    letter-spacing: 0.04em;
+  }
+  62%,
+  86% {
+    opacity: 1;
+    letter-spacing: 0.14em;
+  }
+  100% {
+    opacity: 0;
+    letter-spacing: 0.14em;
+  }
+}
+
+/* ---------------------------------------------------------------- Landing hero */
+.dart-hero-brand {
+  animation: dartHeroBrandIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dart-hero-route {
+  stroke-dasharray: 1800;
+  stroke-dashoffset: 1800;
+  animation: dartHeroRouteDraw 2.4s cubic-bezier(0.4, 0, 0.2, 1) 0.35s forwards;
+}
+.dart-hero-route-ghost {
+  opacity: 0;
+  animation: dartHeroGhostIn 1s ease 0.9s forwards;
+}
+.dart-hero-bus {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dartHeroBusPulse 2.4s ease-in-out 1.4s infinite;
+}
+.dart-hero-scroll {
+  animation: dartHeroScrollIn 0.8s ease 1.6s both;
+}
+.dart-hero-scroll-line {
+  animation: dartHeroScrollLine 1.6s ease-in-out infinite;
+}
+
+@keyframes dartHeroBrandIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dartHeroRouteDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dartHeroGhostIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+@keyframes dartHeroScrollIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dartHeroBusPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+@keyframes dartHeroScrollLine {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleY(0.75);
+    transform-origin: top;
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dart-hero-brand,
+  .dart-hero-route,
+  .dart-hero-route-ghost,
+  .dart-hero-bus,
+  .dart-hero-scroll,
+  .dart-hero-scroll-line {
+    animation: none !important;
+  }
+  .dart-hero-route {
+    stroke-dashoffset: 0;
+  }
+  .dart-hero-route-ghost {
+    opacity: 0.5;
+  }
+}
+
+/* ---------------------------------------------------------------- Plan generation overlay */
+.dart-plan-gen {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 480px);
+  background: #0b1120;
+  color: #fff;
+  opacity: 1;
+}
+.dart-plan-gen.is-exiting {
+  opacity: 0;
+  transition: opacity 0.45s ease, filter 0.45s ease;
+  filter: blur(8px);
+  pointer-events: none;
+}
+.dart-plan-gen-glow {
+  position: absolute;
+  inset: auto auto 12% 8%;
+  width: 42%;
+  height: 38%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.22), transparent 68%);
+  pointer-events: none;
+}
+.dart-plan-gen-panel {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: clamp(28px, 4vw, 56px);
+  background: #0b1120;
+  box-shadow: -24px 0 48px rgba(11, 17, 32, 0.45);
+}
+.dart-plan-map-wrap {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.dart-plan-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.dart-solve-ghost {
+  fill: none;
+  stroke: rgba(96, 165, 250, 0.16);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dart-solve-route {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 920;
+  stroke-dashoffset: 920;
+}
+.dart-solve-r1 {
+  stroke: #2563eb;
+  stroke-width: 6.5;
+  animation: dartSolveDraw 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.15s forwards;
+}
+.dart-solve-r2 {
+  stroke: #059669;
+  stroke-width: 5;
+  animation: dartSolveDraw 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.45s forwards;
+}
+.dart-solve-r3 {
+  stroke: #d97706;
+  stroke-width: 5;
+  animation: dartSolveDraw 2.6s cubic-bezier(0.4, 0, 0.2, 1) 0.75s forwards;
+}
+.dart-solve-stop {
+  fill: #0b1120;
+  stroke: rgba(148, 163, 184, 0.45);
+  stroke-width: 2;
+  opacity: 0.35;
+  transition: opacity 0.4s ease, stroke 0.4s ease;
+}
+.dart-solve-stop.is-lit {
+  opacity: 1;
+  stroke: #60a5fa;
+}
+.dart-solve-dart {
+  offset-path: path("M48 392 L168 392 L168 268 L328 268 L328 156 L568 156");
+  offset-rotate: auto;
+  animation: dartSolveTravel 5.4s cubic-bezier(0.45, 0, 0.2, 1) 0.4s infinite;
+}
+.dart-plan-bar {
+  background: linear-gradient(90deg, #1d4ed8, #2563eb, #60a5fa);
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.45);
+  transition: width 0.18s linear;
+}
+.dart-plan-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: rgba(255, 255, 255, 0.32);
+}
+.dart-plan-step.is-active {
+  color: #fff;
+}
+.dart-plan-step.is-done {
+  color: rgba(255, 255, 255, 0.72);
+}
+.dart-plan-step-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+.dart-plan-step.is-active .dart-plan-step-mark {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.2);
+  color: #93c5fd;
+}
+.dart-plan-step.is-done .dart-plan-step-mark {
+  border-color: #059669;
+  background: rgba(5, 150, 105, 0.18);
+  color: #34d399;
+}
+.dart-plan-step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: currentColor;
+}
+.dart-plan-step.is-active .dart-plan-step-dot {
+  animation: dartPlanPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dartPlanGenIn {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes dartPlanGenOut {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+    filter: blur(8px);
+  }
+}
+@keyframes dartSolveDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dartSolveTravel {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@keyframes dartPlanPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1100px) {
+  .dart-plan-gen {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 38vh) auto;
+    overflow: auto;
+  }
+  .dart-plan-gen-panel {
+    box-shadow: none;
+    padding-top: 8px;
+    padding-bottom: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dart-plan-gen.is-exiting,
+  .dart-solve-r1,
+  .dart-solve-r2,
+  .dart-solve-r3,
+  .dart-solve-dart,
+  .dart-plan-step.is-active .dart-plan-step-dot {
+    animation: none !important;
+  }
+  .dart-solve-route {
+    stroke-dashoffset: 0;
+  }
+  .dart-solve-dart {
+    offset-distance: 55%;
+    opacity: 1;
+  }
 }

@@ -22,8 +22,35 @@ export const ROLE_HOME: Record<Role, string> = {
   planner: "/app/planner",
   dispatcher: "/app/dispatch",
   driver: "/app/drive",
-  guardian: "/app/dashboard",
+  guardian: "/app/live",
 };
+
+export const ROLE_LABEL: Record<Role, string> = {
+  platform_admin: "Platform admin",
+  district_admin: "District admin",
+  planner: "Planner",
+  dispatcher: "Dispatcher",
+  driver: "Driver",
+  guardian: "Family",
+};
+
+export type WorkspaceId = "district_admin" | "planner" | "dispatcher" | "driver" | "guardian";
+
+export const WORKSPACE_HOME: Record<WorkspaceId, string> = {
+  district_admin: "/app/dashboard",
+  planner: "/app/planner",
+  dispatcher: "/app/dispatch",
+  driver: "/app/drive",
+  guardian: "/app/live",
+};
+
+export function afterSignInPath(role: Role, opts?: { pickWorkspace?: boolean; newDistrict?: boolean }): string {
+  if (opts?.newDistrict && role === "district_admin") return "/app/onboarding";
+  if (opts?.pickWorkspace && (role === "district_admin" || role === "platform_admin")) {
+    return "/choose-workspace";
+  }
+  return ROLE_HOME[role];
+}
 
 // Louisville Metro / LOJIC open-data layers (apps.geodata) — see backend/apps/geodata.
 

@@ -80,6 +80,7 @@ class TripListSerializer(serializers.ModelSerializer):
     driver_name = serializers.SerializerMethodField()
     last_position = serializers.SerializerMethodField()
     path = serializers.SerializerMethodField()
+    stop_count = serializers.SerializerMethodField()
     route_safety_context = serializers.ReadOnlyField(source="route.safety_context")
     route_risk_factors = serializers.ReadOnlyField(source="route.risk_factors")
 
@@ -105,6 +106,7 @@ class TripListSerializer(serializers.ModelSerializer):
             "ml_explanation",
             "last_position",
             "path",
+            "stop_count",
             "route_safety_context",
             "route_risk_factors",
         )
@@ -113,6 +115,13 @@ class TripListSerializer(serializers.ModelSerializer):
         if obj.driver:
             return obj.driver.user.full_name
         return None
+
+    def get_stop_count(self, obj):
+        if hasattr(obj, "stop_total"):
+            return obj.stop_total
+        if obj.route_id:
+            return obj.route.stops.count()
+        return 0
 
     def get_last_position(self, obj):
         pos = obj.positions.order_by("-timestamp").first()
@@ -178,10 +187,20 @@ class DriverManifestSerializer(serializers.Serializer):
 class GuardianETASerializer(serializers.Serializer):
     student_id = serializers.UUIDField()
     student_first_name = serializers.CharField()
-    stop_name = serializers.CharField()
+    stop_name = serializers.CharField(allow_null=True)
     scheduled_pickup = serializers.TimeField(allow_null=True)
     status = serializers.CharField()
     delay_seconds = serializers.IntegerField()
     p50_eta = serializers.DateTimeField(allow_null=True)
     is_simulated = serializers.BooleanField()
     on_time = serializers.BooleanField()
+    trip_id = serializers.UUIDField(allow_null=True)
+    route_code = serializers.CharField(allow_null=True)
+    school_name = serializers.CharField(allow_null=True)
+    current_stop_sequence = serializers.IntegerField()
+    stop_count = serializers.IntegerField()
+    my_stop_sequence = serializers.IntegerField(allow_null=True)
+    late_probability = serializers.FloatField()
+    latitude = serializers.FloatField(allow_null=True)
+    longitude = serializers.FloatField(allow_null=True)
+    heading = serializers.FloatField(allow_null=True)

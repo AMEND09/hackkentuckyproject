@@ -1,0 +1,5 @@
+employee_id,email,first_name,last_name,phone,license_expiration,endorsements,availability
+SV-D-01,maya.driver@summitvalley.demo,Maya,Sullivan,614-555-0101,2027-08-31,"CDL-B,S,P",weekday_am
+SV-D-02,jordan.driver@summitvalley.demo,Jordan,Blake,614-555-0102,2026-12-15,"CDL-B,S,P",weekday_am
+SV-D-03,priya.driver@summitvalley.demo,Priya,Anand,614-555-0103,2028-03-20,"CDL-B,S",weekday_am
+SV-D-04,marcus.driver@summitvalley.demo,Marcus,Reed,614-555-0104,2027-05-10,"CDL-B,S,P",weekday_am

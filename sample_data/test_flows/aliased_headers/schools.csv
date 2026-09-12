@@ -1,0 +1,4 @@
+SchoolID,School Name,Type,Street,Lat,Lng,AM Bell,PM Bell,Active
+SV-EL,Summit Valley Elementary,elementary,"4200 Summit Ave, Summit Valley",40.0205,-83.0245,08:20,14:50,true
+SV-MS,Summit Valley Middle,middle,"300 Valley Pkwy, Summit Valley",40.0100,-83.0365,07:55,14:55,true
+SV-HS,Summit Valley High,high,"100 Ridge Blvd, Summit Valley",40.0042,-83.0288,07:30,14:20,true

@@ -14,11 +14,12 @@ class DistrictSerializer(serializers.ModelSerializer):
             "timezone",
             "contact_email",
             "contact_phone",
+            "join_code",
             "is_active",
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at")
+        read_only_fields = ("id", "join_code", "created_at", "updated_at")
 
 
 class DistrictPolicySerializer(serializers.ModelSerializer):
@@ -40,6 +41,8 @@ class DistrictPolicySerializer(serializers.ModelSerializer):
 
 
 class SchoolSerializer(serializers.ModelSerializer):
+    student_count = serializers.IntegerField(read_only=True, required=False)
+
     class Meta:
         model = School
         fields = (
@@ -54,8 +57,9 @@ class SchoolSerializer(serializers.ModelSerializer):
             "morning_bell_time",
             "dismissal_time",
             "is_active",
+            "student_count",
         )
-        read_only_fields = ("id", "district")
+        read_only_fields = ("id", "district", "student_count")
 
 
 class DepotSerializer(serializers.ModelSerializer):

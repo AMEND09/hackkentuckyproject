@@ -1,6 +1,53 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, KeyRound } from "lucide-react";
 import { api } from "../api/client";
 import { PageHeader } from "../components/ui/PageHeader";
+
+function JoinCodeCard({ code, districtName }: { code: string; districtName: string }) {
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const joinLink = `${window.location.origin}/register`;
+
+  async function copy(text: string, which: "code" | "link") {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 1600);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
+  return (
+    <section className="card card-body">
+      <div className="flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-route">
+          <KeyRound size={16} />
+        </span>
+        <h2 className="font-bold text-ink">District join code</h2>
+      </div>
+      <p className="mt-2 text-sm text-slate">
+        Share this code with staff and families. When they create an account they choose{" "}
+        <span className="font-semibold text-ink">Join a district</span>, enter this code, and pick their role.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <span className="font-display text-3xl font-bold tracking-[0.2em] tabular-nums text-ink">{code}</span>
+        <button type="button" onClick={() => copy(code, "code")} className="btn-secondary !py-2 text-sm">
+          {copied === "code" ? <Check size={15} className="text-good" /> : <Copy size={15} />}
+          {copied === "code" ? "Copied" : "Copy code"}
+        </button>
+        <button type="button" onClick={() => copy(joinLink, "link")} className="btn-ghost !py-2 text-sm">
+          {copied === "link" ? <Check size={15} className="text-good" /> : <Copy size={15} />}
+          {copied === "link" ? "Link copied" : "Copy sign-up link"}
+        </button>
+      </div>
+      <p className="mt-3 text-xs text-muted">
+        Anyone with this code can request to join {districtName}. Rotate it by contacting support if it is shared too
+        widely.
+      </p>
+    </section>
+  );
+}
 
 export function AdminPage() {
   const qc = useQueryClient();
@@ -31,6 +78,8 @@ export function AdminPage() {
           </p>
         </section>
       )}
+
+      {district?.join_code && <JoinCodeCard code={district.join_code} districtName={district.name} />}
 
       {pol && (
         <section className="card card-body space-y-3">

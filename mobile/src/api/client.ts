@@ -20,6 +20,15 @@ export async function setTokens(access: string | null, refresh?: string | null) 
   }
 }
 
+export async function clearTokens() {
+  await setTokens(null, null);
+}
+
+export function apiError(err: unknown, fallback = "Something went wrong") {
+  const ax = err as { response?: { data?: { error?: { message?: string }; detail?: string } } };
+  return ax.response?.data?.error?.message || ax.response?.data?.detail || fallback;
+}
+
 api.interceptors.request.use(async (config) => {
   const token = await getAccess();
   if (token) config.headers.Authorization = `Bearer ${token}`;

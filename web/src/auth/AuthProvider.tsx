@@ -1,14 +1,21 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, setAccessToken, setRefresh } from "../api/client";
-import type { User } from "../types";
+import type { Role, User } from "../types";
 
 export interface RegisterInput {
-  district_name: string;
+  /** "create" spins up a new district; "join" attaches to an existing one. */
+  mode: "create" | "join";
   first_name: string;
   last_name: string;
   email: string;
   phone?: string;
   password: string;
+  // create mode
+  district_name?: string;
+  // join mode
+  role?: Role;
+  join_code?: string;
+  district?: string;
 }
 
 interface AuthState {

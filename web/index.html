@@ -6,8 +6,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2563EB" />
     <title>DART — District Automated Routing & Tracking</title>
+    <style>
+      /* Instant first paint — launch lockup (before React boots) */
+      #dart-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #2563eb;
+        font-family: Inter, system-ui, sans-serif;
+      }
+      #dart-boot img {
+        width: 252px;
+        height: 76px;
+        display: block;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0;
+        animation: dartBootLift 1.2s cubic-bezier(0.3, 0, 0.2, 1) forwards;
+      }
+      #dart-boot .tag {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.82);
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        opacity: 0;
+        animation: dartBootTag 1.2s ease-out 0.15s forwards;
+      }
+      @keyframes dartBootLift {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes dartBootTag {
+        from {
+          opacity: 0;
+          letter-spacing: 0.04em;
+        }
+        to {
+          opacity: 1;
+          letter-spacing: 0.14em;
+        }
+      }
+    </style>
   </head>
   <body class="bg-canvas text-ink font-sans antialiased">
+    <div id="dart-boot" aria-hidden="true">
+      <img src="/brand/dart-logo.png" alt="" width="252" height="76" />
+      <div class="tag">District Automated Routing &amp; Tracking</div>
+    </div>
+    <script>
+      try {
+        if (sessionStorage.getItem("dart_boot_splash_seen") === "1") {
+          document.getElementById("dart-boot")?.remove();
+        }
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

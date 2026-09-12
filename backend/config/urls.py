@@ -7,8 +7,10 @@ from apps.accounts.views import (
     DemoCredentialsView,
     MeView,
     TokenRefreshView,
+    district_lookup_view,
     login_view,
     logout_view,
+    public_districts_view,
     register_view,
 )
 
@@ -28,6 +30,8 @@ urlpatterns = [
     path("api/v1/auth/logout/", logout_view, name="logout"),
     path("api/v1/auth/me/", MeView.as_view(), name="me"),
     path("api/v1/auth/demo-credentials/", DemoCredentialsView.as_view(), name="demo-credentials"),
+    path("api/v1/auth/districts/", public_districts_view, name="public-districts"),
+    path("api/v1/auth/lookup-district/", district_lookup_view, name="district-lookup"),
     path("api/v1/", include("apps.districts.urls")),
     path("api/v1/", include("apps.transportation.urls")),
     path("api/v1/", include("apps.imports.urls")),

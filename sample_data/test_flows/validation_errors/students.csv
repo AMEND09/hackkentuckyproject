@@ -1,0 +1,5 @@
+student_id,first_name,last_name,grade,school_id,home_address,latitude,longitude,eligible,wheelchair,max_ride_minutes
+SV-S-2001,Ava,Bennett,3,SV-EL,"112 Maple St",40.0194,-83.0272,true,false,
+SV-S-BAD1,,,3,SV-EL,"no name",40.0190,-83.0268,true,false,
+SV-S-BAD2,Ghost,Kid,4,NO-SUCH-SCHOOL,"88 Cedar",40.0177,-83.0230,true,false,
+SV-S-BAD3,Bad,Coords,1,SV-EL,"82 Cedar",91.0,-181.0,true,false,

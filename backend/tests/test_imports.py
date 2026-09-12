@@ -1,9 +1,9 @@
-from pathlib import Path
-
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.imports.models import ImportJob
-from apps.imports.services import confirm_mapping, store_upload, validate_job
+from apps.imports.services import store_upload, validate_job
+from apps.imports.services.mapper import detect_import_type
+from tests.conftest import api
 
 
 def test_csv_validation_duplicate_and_coords(district, planner, tmp_path, settings):
@@ -36,3 +36,33 @@ S-2,Mia,Santos,OAK-ES,not-a-coord,-85.73
     codes = set(job.row_errors.values_list("error_code", flat=True))
     assert "DUPLICATE_ID" in codes
     assert "MALFORMED_COORDINATE" in codes
+
+
+def test_detect_import_type_from_filename_and_headers():
+    assert detect_import_type(["anything"], "schools.csv") == "schools"
+    assert detect_import_type(["anything"], "happy_path-students.csv") == "students"
+    assert detect_import_type(
+        ["school_id", "name", "latitude", "longitude"],
+        "roster.csv",
+    ) == "schools"
+    assert detect_import_type(
+        ["vehicle_number", "capacity", "license_plate"],
+        "fleet.csv",
+    ) == "vehicles"
+
+
+def test_ingest_commits_schools_from_drop(district, planner, tmp_path, settings):
+    settings.MEDIA_ROOT = tmp_path
+    csv = b"""school_id,name,latitude,longitude
+NEW-ES,North Elementary,38.25,-85.72
+"""
+    client = api(planner)
+    resp = client.post(
+        "/api/v1/imports/ingest/",
+        {"file": SimpleUploadedFile("schools.csv", csv, content_type="text/csv")},
+        format="multipart",
+    )
+    assert resp.status_code == 201
+    assert resp.data["import_type"] == "schools"
+    assert resp.data["status"] == "committed"
+    assert district.schools.filter(school_code="NEW-ES").exists()

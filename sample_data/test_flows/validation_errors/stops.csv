@@ -1,0 +1,4 @@
+stop_id,name,address,latitude,longitude,approved,accessibility,safety_notes
+ST-01,Maple & 1st,"110 Maple St, Summit Valley",40.0192,-83.0270,true,curb_cut,ok
+ST-BAD,,No name stop,40.01,-83.03,true,none,should fail
+ST-FAR,Invalid longitude,"x",40.01,-200,true,none,out of range

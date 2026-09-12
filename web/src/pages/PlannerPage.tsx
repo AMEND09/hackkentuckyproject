@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Construction, Loader2, Map, Route, ShieldAlert } from "lucide-react";
 import { api, errorMessage } from "../api/client";
+import { PlanGeneratingScreen } from "../components/brand/PlanGeneratingScreen";
 import { MapPoint, RouteMap } from "../components/maps/RouteMap";
 import { PageHeader } from "../components/ui/PageHeader";
 import { RiskFactorList } from "../components/ui/RiskFactorList";
@@ -40,6 +42,13 @@ export function PlannerPage() {
       setPlanId(published.id);
     }
   }, [plans, planId]);
+
+  useEffect(() => {
+    const list = (schools?.results || []) as { id: string; student_count?: number }[];
+    if (school || !list.length) return;
+    const best = [...list].sort((a, b) => (b.student_count || 0) - (a.student_count || 0))[0];
+    setSchool(best.id);
+  }, [schools, school]);
 
   const { data: plan, refetch } = useQuery({
     queryKey: ["plan", planId],
@@ -104,12 +113,22 @@ export function PlannerPage() {
 
   const planList = plans?.results || [];
   const isGenerating = create.isPending || plan?.status === "generating";
+  const schoolName =
+    (schools?.results || []).find((s: { id: string; name: string }) => s.id === (school || schools?.results?.[0]?.id))
+      ?.name || undefined;
 
   return (
     <div className="page-shell">
+      <PlanGeneratingScreen
+        open={isGenerating}
+        progress={job?.progress}
+        message={job?.message}
+        mode={mode}
+        schoolName={schoolName}
+      />
       <PageHeader
         title="Route planner"
-        subtitle="OR-Tools capacitated VRP with time windows. Travel times use Haversine plus synthetic P50/P90 models."
+        subtitle="Pick the school that has students, generate, approve, then publish trips. Ignore the old failed plans."
         actions={
           plan && (
             <span className={STATUS_BADGE[plan.status] || "badge-neutral"}>{plan.status}</span>
@@ -117,15 +136,26 @@ export function PlannerPage() {
         }
       />
 
+      {!(schools?.results || []).length && (
+        <p className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-slate">
+          No schools imported yet.{" "}
+          <Link className="link font-semibold" to="/app/onboarding">
+            Import the test CSVs
+          </Link>{" "}
+          first, then generate a plan.
+        </p>
+      )}
+
       <div className="card card-body">
         <div className="grid md:grid-cols-4 gap-4">
           <label>
             <span className="label">School</span>
             <select className="select" value={school} onChange={(e) => setSchool(e.target.value)}>
               <option value="">Select…</option>
-              {(schools?.results || []).map((s: { id: string; name: string }) => (
+              {(schools?.results || []).map((s: { id: string; name: string; student_count?: number }) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
+                  {s.student_count ? ` (${s.student_count} students)` : ""}
                 </option>
               ))}
             </select>
@@ -159,32 +189,26 @@ export function PlannerPage() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-navy/[0.06]">
-          {(["time", "distance", "vehicles", "reliability"] as const).map((k) => (
-            <label key={k}>
-              <span className="label">{k} weight</span>
-              <input
-                className="input"
-                type="number"
-                value={weights[k]}
-                onChange={(e) => setWeights({ ...weights, [k]: Number(e.target.value) })}
-              />
-            </label>
-          ))}
-        </div>
+        <details className="mt-5 border-t border-navy/[0.06] pt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate">Advanced weights (optional)</summary>
+          <p className="mt-2 text-xs text-muted">Relative priority only — not minutes. Leave these alone unless you know you want to trade time vs buses.</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-4">
+            {(["time", "distance", "vehicles", "reliability"] as const).map((k) => (
+              <label key={k}>
+                <span className="label">{k} weight</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={weights[k]}
+                  onChange={(e) => setWeights({ ...weights, [k]: Number(e.target.value) })}
+                />
+              </label>
+            ))}
+          </div>
+        </details>
       </div>
-
-      {job && plan?.status === "generating" && (
-        <div className="card card-body flex items-center gap-3 text-sm">
-          <Loader2 size={18} className="animate-spin text-route" />
-          <div>
-            <span className="font-semibold">Solver running</span> — {job.progress}% · {job.message}
-          </div>
-          <div className="flex-1 h-2 rounded-full bg-canvas overflow-hidden ml-2 max-w-xs">
-            <div className="h-full bg-route rounded-full transition-all" style={{ width: `${job.progress}%` }} />
-          </div>
-        </div>
-      )}
 
       {err && (
         <p role="alert" className="text-bad bg-red-50 rounded-xl p-3 border border-red-100 text-sm">

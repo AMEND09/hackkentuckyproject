@@ -1,0 +1,7 @@
+{
+  "name": "dart-live-activity",
+  "version": "1.0.0",
+  "description": "Lock-screen Live Activity for a DART rider trip",
+  "main": "index.ts",
+  "license": "UNLICENSED"
+}

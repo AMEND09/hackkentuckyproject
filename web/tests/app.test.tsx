@@ -6,10 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { LoginPage } from "../src/pages/LoginPage";
 import { AuthProvider } from "../src/auth/AuthProvider";
-import { ROLE_HOME } from "../src/types";
+import { ROLE_HOME, afterSignInPath } from "../src/types";
 import { DispatchPage } from "../src/pages/DispatchPage";
 import { PlannerPage } from "../src/pages/PlannerPage";
 import { OnboardingPage } from "../src/pages/OnboardingPage";
+import { ChooseWorkspacePage } from "../src/pages/ChooseWorkspacePage";
 
 vi.mock("../src/api/client", async () => {
   const actual = await vi.importActual<typeof import("../src/api/client")>("../src/api/client");
@@ -61,6 +62,7 @@ describe("auth", () => {
     wrap(<LoginPage />);
     expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /Open a demo account/i }));
     expect(await screen.findByText("District admin")).toBeInTheDocument();
   });
 
@@ -74,9 +76,11 @@ describe("auth", () => {
   });
 
   it("maps roles to homes", () => {
-    expect(ROLE_HOME.dispatcher).toBe("/dispatch");
-    expect(ROLE_HOME.planner).toBe("/planner");
-    expect(ROLE_HOME.district_admin).toBe("/dashboard");
+    expect(ROLE_HOME.dispatcher).toBe("/app/dispatch");
+    expect(ROLE_HOME.planner).toBe("/app/planner");
+    expect(ROLE_HOME.district_admin).toBe("/app/dashboard");
+    expect(afterSignInPath("district_admin", { pickWorkspace: true })).toBe("/choose-workspace");
+    expect(afterSignInPath("district_admin", { newDistrict: true })).toBe("/app/onboarding");
   });
 });
 
@@ -114,8 +118,17 @@ describe("onboarding mapper", () => {
   it("lets the user confirm mapping after upload", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: {} });
     wrap(<OnboardingPage />);
-    expect(await screen.findByText("District onboarding")).toBeInTheDocument();
-    expect(screen.getByText("students")).toBeInTheDocument();
+    expect(await screen.findByText("Set up your district")).toBeInTheDocument();
+    expect(screen.getByText("Continue to roster import")).toBeInTheDocument();
+  });
+});
+
+describe("workspace picker", () => {
+  it("defaults to district admin", async () => {
+    vi.mocked(api.get).mockRejectedValue(new Error("no session"));
+    wrap(<ChooseWorkspacePage />);
+    expect(await screen.findByText("Where would you like to start?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue as District admin" })).toBeInTheDocument();
   });
 });
 

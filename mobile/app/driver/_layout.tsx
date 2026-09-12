@@ -1,5 +1,19 @@
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
+import { ActivityIndicator, View } from "react-native";
+import { useAuth } from "../../src/auth/AuthProvider";
+import { colors } from "../../src/theme";
 
 export default function DriverLayout() {
-  return <Stack screenOptions={{ title: "Driver" }} />;
+  const { user, ready } = useAuth();
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+  if (!user) return <Redirect href="/welcome" />;
+  if (user.role !== "driver") return <Redirect href="/(guardian)/today" />;
+
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

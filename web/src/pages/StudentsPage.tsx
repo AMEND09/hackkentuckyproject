@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { api } from "../api/client";
 import { Pager } from "../components/Pager";
@@ -8,9 +8,15 @@ import { LoadingBlock } from "../components/ui/LoadingBlock";
 import { PageHeader } from "../components/ui/PageHeader";
 
 export function StudentsPage() {
-  const [q, setQ] = useState("");
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get("q") || "");
   const [grade, setGrade] = useState("");
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    const next = params.get("q") || "";
+    setQ(next);
+    setPage(1);
+  }, [params]);
   const { data, isLoading } = useQuery({
     queryKey: ["students", q, grade, page],
     queryFn: async () => (await api.get("/students/", { params: { search: q, grade: grade || undefined, page, page_size: 50 } })).data,
@@ -20,7 +26,7 @@ export function StudentsPage() {
     <div className="page-shell">
       <PageHeader
         title="Students"
-        subtitle="Fictional roster only. Never real student records. Click a name for the home location."
+        subtitle="Share a rider code with a parent so they can link and see that child's bus in the live demo."
       />
       <div className="toolbar">
         <div className="relative max-w-sm flex-1">
@@ -56,13 +62,14 @@ export function StudentsPage() {
               <tr>
                 <th>ID</th>
                 <th>Name</th>
+                <th>Rider code</th>
                 <th>Grade</th>
                 <th>School</th>
                 <th>Access</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((s: { id: string; external_id: string; first_name: string; last_name: string; grade: string; school_name: string; requires_wheelchair: boolean }) => (
+              {rows.map((s: { id: string; external_id: string; first_name: string; last_name: string; grade: string; school_name: string; requires_wheelchair: boolean; rider_code?: string }) => (
                 <tr key={s.id}>
                   <td className="font-mono text-xs text-slate">{s.external_id}</td>
                   <td className="font-semibold">
@@ -70,6 +77,7 @@ export function StudentsPage() {
                       {s.first_name} {s.last_name}
                     </Link>
                   </td>
+                  <td className="font-mono text-xs font-semibold tracking-wider text-navy">{s.rider_code || "—"}</td>
                   <td>{s.grade}</td>
                   <td className="text-slate">{s.school_name}</td>
                   <td>
