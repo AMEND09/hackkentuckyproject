@@ -23,6 +23,7 @@ import { SchoolDetailPage } from "./pages/SchoolDetailPage";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LivePage } from "./pages/LivePage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import type { Role } from "./types";
 
 function Guard({ children, roles }: { children: ReactNode; roles?: Role[] }) {
@@ -48,6 +49,7 @@ export function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/choose-workspace"
         element={

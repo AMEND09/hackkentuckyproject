@@ -32,9 +32,12 @@
     ],
     "ios": {
       "supportsTablet": true,
+      "appleTeamId": "UL89HA8QZ8",
       "bundleIdentifier": "com.app.dart",
       "entitlements": {
-        "com.apple.security.application-groups": ["group.com.app.dart"]
+        "com.apple.security.application-groups": [
+          "group.com.app.dart"
+        ]
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -45,12 +48,37 @@
       }
     },
     "android": {
-      "package": "com.app.dart"
+      "package": "com.app.dart",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.app.dart.widget",
+                  "targetName": "DARTWidget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.app.dart"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "c32718e2-5407-402b-a895-5b56c9b31acc"
       }
-    }
+    },
+    "owner": "rahbeabass"
   }
 }
