@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, Map, Route } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Construction, Loader2, Map, Route, ShieldAlert } from "lucide-react";
 import { api, errorMessage } from "../api/client";
-import { RouteMap } from "../components/maps/RouteMap";
+import { MapPoint, RouteMap } from "../components/maps/RouteMap";
 import { PageHeader } from "../components/ui/PageHeader";
+import { RiskFactorList } from "../components/ui/RiskFactorList";
 import { StatCard } from "../components/ui/StatCard";
+import { useHazardLayers } from "../hooks/useHazardLayers";
+import type { RiskFactor, SafetyContext } from "../types";
 
 const COLORS = ["#2563EB", "#059669", "#D97706", "#7C3AED", "#DC2626", "#0D9488", "#C2410C"];
 
@@ -27,6 +30,8 @@ export function PlannerPage() {
   const [planId, setPlanId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [weights, setWeights] = useState({ time: 6, distance: 3, vehicles: 8, reliability: 4 });
+  const [showCorridors, setShowCorridors] = useState(true);
+  const [showConstruction, setShowConstruction] = useState(true);
 
   useEffect(() => {
     const list = plans?.results || [];
@@ -84,19 +89,18 @@ export function PlannerPage() {
   });
 
   const routes = plan?.routes || [];
-  const lines = useMemo(
-    () =>
-      routes.map((r: { id: string; stops: { longitude: string; latitude: string }[] }, i: number) => ({
-        id: r.id,
-        color: COLORS[i % COLORS.length],
-        coords: r.stops.map((s) => [Number(s.longitude), Number(s.latitude)] as [number, number]),
-        width: 5,
-      })),
-    [routes],
+  const lines = routes.map((r: { id: string; stops: { longitude: string; latitude: string }[] }, i: number) => ({
+    id: r.id,
+    color: COLORS[i % COLORS.length],
+    coords: r.stops.map((s) => [Number(s.longitude), Number(s.latitude)] as [number, number]),
+    width: 5,
+  }));
+  const points: MapPoint[] = routes.flatMap(
+    (r: { stops: { id: string; latitude: string; longitude: string; name: string }[] }) =>
+      r.stops.map((s) => ({ id: s.id, lat: Number(s.latitude), lng: Number(s.longitude), label: s.name })),
   );
-  const points = routes.flatMap((r: { stops: { id: string; latitude: string; longitude: string; name: string }[] }) =>
-    r.stops.map((s) => ({ id: s.id, lat: Number(s.latitude), lng: Number(s.longitude), label: s.name })),
-  );
+
+  const { hazardLines, hazardPoints } = useHazardLayers(points, { showCorridors, showConstruction });
 
   const planList = plans?.results || [];
   const isGenerating = create.isPending || plan?.status === "generating";
@@ -210,10 +214,38 @@ export function PlannerPage() {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="px-5 pt-5 pb-2">
+            <div className="px-5 pt-5 pb-2 flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-bold text-ink">Route preview</h2>
+              <div className="flex items-center gap-4 text-xs font-medium text-slate">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={showCorridors}
+                    onChange={(e) => setShowCorridors(e.target.checked)}
+                  />
+                  <ShieldAlert size={14} className="text-bad" /> Vision Zero corridors
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded"
+                    checked={showConstruction}
+                    onChange={(e) => setShowConstruction(e.target.checked)}
+                  />
+                  <Construction size={14} className="text-warn" /> Active construction
+                </label>
+              </div>
             </div>
-            <RouteMap points={points} lines={lines} className="h-[28rem] rounded-none border-0 border-t border-navy/[0.06]" />
+            <RouteMap
+              points={[...points, ...hazardPoints]}
+              lines={[...lines, ...hazardLines]}
+              className="h-[28rem] rounded-none border-0 border-t border-navy/[0.06]"
+            />
+            <p className="text-[11px] text-muted px-5 py-2 border-t border-navy/[0.06]">
+              Corridors and closures are from Louisville Metro / LOJIC open data (data.louisvilleky.gov), scoped to this
+              plan's stops — not a live traffic feed.
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -225,7 +257,8 @@ export function PlannerPage() {
                   route_code: string;
                   student_count: number;
                   on_time_probability: number;
-                  risk_factors: { text: string }[];
+                  risk_factors: RiskFactor[];
+                  safety_context?: SafetyContext;
                   stops: { id: string; sequence: number; name: string; student_count: number }[];
                 },
                 i: number,
@@ -251,11 +284,7 @@ export function PlannerPage() {
                       </li>
                     ))}
                   </ol>
-                  {r.risk_factors?.[0]?.text && (
-                    <p className="text-xs text-warn mt-3 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
-                      {r.risk_factors[0].text}
-                    </p>
-                  )}
+                  <RiskFactorList factors={r.risk_factors} className="mt-3 space-y-1.5" />
                 </article>
               ),
             )}

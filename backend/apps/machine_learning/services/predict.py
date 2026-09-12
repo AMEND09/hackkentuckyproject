@@ -163,21 +163,52 @@ def _rush_factor(hour: int) -> float:
     return 0.45 if hour in {7, 8, 15, 16} else 0.2
 
 
+def _node_context(points: list[tuple[float, float]]) -> tuple[list[dict | None], list[int]]:
+    """Real road classification + signal density per node, from the Louisville geodata layers.
+
+    Returns (road_by_node, signal_count_by_node). Entries are None/0 when the
+    geodata tables haven't been imported yet, so callers keep their heuristic
+    fallback and behavior is unchanged until `import_louisville_open_data` runs.
+    """
+    from apps.geodata import services as geo_services
+
+    roads = []
+    signals = []
+    for lat, lng in points:
+        roads.append(geo_services.road_context_for(lat, lng))
+        signals.append(geo_services.signal_count_near(lat, lng))
+    return roads, signals
+
+
 def overlay_ml_matrix(matrix: dict, points, hour: int, mode: str, node_meta=None, day_of_week=None) -> dict:
     """Overlay model P50/P90 predictions onto a Haversine matrix.
 
     node_meta (optional) is aligned with points: [{boarding, wheelchair, load}].
     Without it, per-leg boarding falls back to neutral training-median values.
+    road_category/urban_density/traffic_severity/rain/weather_severity are
+    pulled from the real Louisville geodata + weather layers when available
+    (apps.geodata, apps.machine_learning.services.weather), falling back to the
+    original distance/rush-hour heuristics when those tables are empty.
     Always returns p50_s/p90_s plus a delay_risk matrix from the late classifier
     (0.15 neutral risk when models are missing, matching predict fallbacks).
     """
     from django.utils import timezone
+
+    from apps.machine_learning.services import weather as weather_service
 
     n = len(points)
     if day_of_week is None:
         # Models only saw Mon-Fri (0-4); clamp weekend planning days.
         day_of_week = min(timezone.localdate().weekday(), 4)
     metas = list(node_meta) if node_meta else [{} for _ in points]
+    node_road, node_signals = _node_context(points) if points else ([], [])
+    max_signals = max(node_signals) if node_signals else 0
+    if points:
+        avg_lat = sum(p[0] for p in points) / len(points)
+        avg_lng = sum(p[1] for p in points) / len(points)
+        wx = weather_service.current_conditions(avg_lat, avg_lng)
+    else:
+        wx = {"rain": 0, "weather_severity": 0.15}
     feats = []
     coords = []
     for i in range(n):
@@ -187,21 +218,23 @@ def overlay_ml_matrix(matrix: dict, points, hour: int, mode: str, node_meta=None
             dist = matrix["distance_km"][i][j]
             planned = matrix["duration_s"][i][j]
             dest = metas[j] if j < len(metas) else {}
+            road = node_road[j] if j < len(node_road) else None
+            signal_factor = (node_signals[j] / max_signals) if max_signals else 0.0
             feats.append(
                 {
                     "distance_km": dist,
                     "planned_duration_s": planned,
                     "departure_hour": hour,
                     "day_of_week": day_of_week,
-                    "road_category": 1 if dist > 2.5 else 0,
-                    "traffic_severity": _rush_factor(hour),
-                    "rain": 0,
-                    "weather_severity": 0.15,
+                    "road_category": road["road_category"] if road else (1 if dist > 2.5 else 0),
+                    "traffic_severity": min(1.0, _rush_factor(hour) + 0.25 * signal_factor),
+                    "rain": wx.get("rain", 0),
+                    "weather_severity": wx.get("weather_severity", 0.15),
                     "passenger_load": dest.get("load", 20),
                     "students_boarding": dest.get("boarding", 6),
                     "wheelchair_boardings": dest.get("wheelchair", 0),
                     "remaining_stops": max(0, n - 1 - j),
-                    "urban_density": 0.6,
+                    "urban_density": road["urban_density"] if road else 0.6,
                     "historical_delay_s": 0,
                     "segment_position": j / max(n - 1, 1),
                 }

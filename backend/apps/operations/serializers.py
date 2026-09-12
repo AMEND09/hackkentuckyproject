@@ -80,6 +80,8 @@ class TripListSerializer(serializers.ModelSerializer):
     driver_name = serializers.SerializerMethodField()
     last_position = serializers.SerializerMethodField()
     path = serializers.SerializerMethodField()
+    route_safety_context = serializers.ReadOnlyField(source="route.safety_context")
+    route_risk_factors = serializers.ReadOnlyField(source="route.risk_factors")
 
     class Meta:
         model = Trip
@@ -103,6 +105,8 @@ class TripListSerializer(serializers.ModelSerializer):
             "ml_explanation",
             "last_position",
             "path",
+            "route_safety_context",
+            "route_risk_factors",
         )
 
     def get_driver_name(self, obj):

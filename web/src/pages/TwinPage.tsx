@@ -16,6 +16,7 @@ export function TwinPage() {
     traffic_severity: 0.7,
     weather_severity: 0.5,
     rain: true,
+    snow_day: false,
     starting_delay_min: 0,
     starting_delay_max: 10,
     boarding_variability: 0.4,
@@ -87,6 +88,15 @@ export function TwinPage() {
           <input type="checkbox" className="rounded" checked={form.rain} onChange={(e) => setForm({ ...form, rain: e.target.checked })} />
           Rain scenario
         </label>
+        <label className="flex items-center gap-2 mt-6 text-sm font-medium">
+          <input
+            type="checkbox"
+            className="rounded"
+            checked={form.snow_day}
+            onChange={(e) => setForm({ ...form, snow_day: e.target.checked })}
+          />
+          Snow day (real Public Works plow-route coverage)
+        </label>
         <button className="btn-primary md:col-span-3" onClick={() => create.mutate()} disabled={!form.route_plan || create.isPending}>
           {create.isPending || running ? (
             <>
@@ -106,6 +116,13 @@ export function TwinPage() {
             <StatCard label="All routes on time" value={`${Math.round(run.results.probability_all_on_time * 100)}%`} accent="good" />
             <StatCard label="At least one late" value={`${Math.round(run.results.probability_at_least_one_late * 100)}%`} accent="warn" />
             <StatCard label="Most vulnerable" value={run.results.most_vulnerable_route?.route_code || "—"} accent="bad" />
+            {run.results.snow_day_mode && (
+              <StatCard
+                label="Snow-stuck events"
+                value={String(run.results.snow_stuck_events)}
+                accent="warn"
+              />
+            )}
           </div>
           <div className="card card-body h-80">
             <h2 className="font-bold text-ink mb-4">On-time by route</h2>

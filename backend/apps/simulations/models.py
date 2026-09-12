@@ -25,6 +25,10 @@ class StressTestRun(TenantModel):
     traffic_severity = models.FloatField(default=0.4)
     weather_severity = models.FloatField(default=0.2)
     rain = models.BooleanField(default=False)
+    snow_day = models.BooleanField(
+        default=False,
+        help_text="Extra penalty for routes with low real snow-route coverage (Route.safety_context.snow_route_coverage).",
+    )
     starting_delay_min = models.IntegerField(default=0)
     starting_delay_max = models.IntegerField(default=8)
     boarding_variability = models.FloatField(default=0.3)

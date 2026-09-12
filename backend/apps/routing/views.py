@@ -63,6 +63,7 @@ class RouteSerializer(serializers.ModelSerializer):
             "risk_score",
             "capacity_utilization",
             "risk_factors",
+            "safety_context",
             "student_count",
             "wheelchair_count",
             "stops",
@@ -231,6 +232,14 @@ class RoutePlanViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         except RoutePlan.DoesNotExist:
             raise RouteWiseError("Both plans must exist in your district.", code="NOT_FOUND", status_code=404)
         return Response(compare_plans(a, b))
+
+    @action(detail=False, methods=["post"], url_path="scan-construction-hazards")
+    def scan_construction_hazards(self, request):
+        """Re-checks published routes in the caller's district against live ROW permits."""
+        from apps.routing.services.hazard_watch import scan_published_routes
+
+        created = scan_published_routes(district=request.user.district)
+        return Response({"alerts_created": len(created), "routes": created})
 
 
 class JobViewSet(TenantQuerySetMixin, viewsets.ReadOnlyModelViewSet):

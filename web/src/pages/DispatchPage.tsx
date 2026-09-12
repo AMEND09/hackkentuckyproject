@@ -1,13 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Navigation, Zap } from "lucide-react";
-import { api } from "../api/client";
-import { RouteMap } from "../components/maps/RouteMap";
+import { AlertTriangle, Construction, Loader2, Navigation, Radar, ShieldAlert, Zap } from "lucide-react";
+import { api, errorMessage } from "../api/client";
+import { MapPoint, RouteMap } from "../components/maps/RouteMap";
 import { LoadingBlock } from "../components/ui/LoadingBlock";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useHazardLayers } from "../hooks/useHazardLayers";
+import type { SafetyContext } from "../types";
 
 export function DispatchPage() {
   const qc = useQueryClient();
+  const [showCorridors, setShowCorridors] = useState(true);
+  const [showConstruction, setShowConstruction] = useState(true);
+  const [scanMsg, setScanMsg] = useState<string | null>(null);
   const { data: trips, isLoading } = useQuery({
     queryKey: ["trips"],
     queryFn: async () => (await api.get("/trips/", { params: { at_risk: true, page_size: 50 } })).data,
@@ -26,6 +32,18 @@ export function DispatchPage() {
     mutationFn: (id: string) => api.post(`/trips/${id}/disrupt/`, { minutes: 10 }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trips"] }),
   });
+  const scanHazards = useMutation({
+    mutationFn: async () => (await api.post("/route-plans/scan-construction-hazards/")).data,
+    onSuccess: (d) => {
+      setScanMsg(
+        d.alerts_created > 0
+          ? `Found ${d.alerts_created} new construction hazard(s) on published routes.`
+          : "No new construction hazards on published routes.",
+      );
+      qc.invalidateQueries({ queryKey: ["alerts"] });
+    },
+    onError: (e) => setScanMsg(errorMessage(e)),
+  });
   const rows = [...(trips?.results || [])].sort(
     (a: { late_probability: number }, b: { late_probability: number }) => b.late_probability - a.late_probability,
   );
@@ -37,7 +55,7 @@ export function DispatchPage() {
       coords: t.path,
       width: 5,
     }));
-  const points = rows
+  const points: MapPoint[] = rows
     .filter((t: { last_position?: { latitude: string } }) => t.last_position)
     .map((t: { id: string; last_position: { latitude: string; longitude: string }; late_probability: number; route_code: string }) => ({
       id: t.id,
@@ -47,6 +65,8 @@ export function DispatchPage() {
       label: t.route_code,
       kind: "bus" as const,
     }));
+
+  const { hazardLines, hazardPoints } = useHazardLayers(points, { showCorridors, showConstruction });
 
   const alertCount = (alerts?.results || []).length;
   const atRiskCount = rows.filter((t: { late_probability: number }) => t.late_probability > 0.45).length;
@@ -74,21 +94,63 @@ export function DispatchPage() {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="px-5 pt-5 pb-2">
+        <div className="px-5 pt-5 pb-2 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-bold text-ink">Live map</h2>
+          <div className="flex items-center gap-4 text-xs font-medium text-slate">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={showCorridors}
+                onChange={(e) => setShowCorridors(e.target.checked)}
+              />
+              <ShieldAlert size={14} className="text-bad" /> Vision Zero corridors
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={showConstruction}
+                onChange={(e) => setShowConstruction(e.target.checked)}
+              />
+              <Construction size={14} className="text-warn" /> Active construction
+            </label>
+            <button
+              className="btn-secondary text-xs"
+              onClick={() => scanHazards.mutate()}
+              disabled={scanHazards.isPending}
+            >
+              {scanHazards.isPending ? <Loader2 size={14} className="animate-spin" /> : <Radar size={14} />}
+              Scan for new hazards
+            </button>
+          </div>
         </div>
         {isLoading ? (
           <div className="p-5"><LoadingBlock rows={1} /></div>
         ) : (
-          <RouteMap points={points} lines={lines} className="h-80 rounded-none border-0 border-t border-navy/[0.06]" />
+          <RouteMap
+            points={[...points, ...hazardPoints]}
+            lines={[...lines, ...hazardLines]}
+            className="h-80 rounded-none border-0 border-t border-navy/[0.06]"
+          />
         )}
+        {scanMsg && <p className="text-xs text-slate px-5 py-2 border-t border-navy/[0.06]">{scanMsg}</p>}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-3">
           <h2 className="section-title">Trip queue</h2>
           {rows.length === 0 && <p className="text-slate text-sm">No active trips.</p>}
-          {rows.map((t: { id: string; route_code: string; status: string; current_delay_seconds: number; late_probability: number; is_simulated: boolean; school_name?: string }) => (
+          {rows.map((t: {
+            id: string;
+            route_code: string;
+            status: string;
+            current_delay_seconds: number;
+            late_probability: number;
+            is_simulated: boolean;
+            school_name?: string;
+            route_safety_context?: SafetyContext;
+          }) => (
             <article key={t.id} className="card card-body flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -98,6 +160,16 @@ export function DispatchPage() {
                   <span className={t.late_probability > 0.45 ? "badge-bad" : "badge-good"}>
                     {Math.round(t.late_probability * 100)}% late risk
                   </span>
+                  {(t.route_safety_context?.high_injury_km || 0) > 0 && (
+                    <span className="badge-bad" title={t.route_safety_context?.high_injury_corridors.join(", ")}>
+                      <ShieldAlert size={12} /> high-injury corridor
+                    </span>
+                  )}
+                  {(t.route_safety_context?.active_construction?.length || 0) > 0 && (
+                    <span className="badge-warn">
+                      <Construction size={12} /> {t.route_safety_context?.active_construction.length} closure(s)
+                    </span>
+                  )}
                 </div>
                 <div className="text-sm text-slate mt-1 capitalize">
                   {t.school_name && `${t.school_name} · `}

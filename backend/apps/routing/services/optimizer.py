@@ -419,8 +419,22 @@ def persist_solution(**kwargs) -> RoutePlan:
             else:
                 bucket = 0.28
         on_time = round(0.5 * bucket + 0.5 * (1 - route_risk), 3)
-        risk = round(min(100, (1 - on_time) * 80 + (15 if wc else 0) + max(0, ride - policy.max_student_ride_minutes * 60) / 60), 1)
-        factors = explain_risk(mode, on_time, ride, policy, slack, wc, dist, model_risk=route_risk)
+        path_points = [
+            _node_latlng(n, depot, school, stop_list, school_i) for n, _ in seq_nodes
+        ]
+        safety = route_safety_context(path_points)
+        risk = round(
+            min(
+                100,
+                (1 - on_time) * 80
+                + (15 if wc else 0)
+                + max(0, ride - policy.max_student_ride_minutes * 60) / 60
+                + min(15, safety["high_injury_km"] * 6)
+                + min(16, 8 * len(safety["active_construction"])),
+            ),
+            1,
+        )
+        factors = explain_risk(mode, on_time, ride, policy, slack, wc, dist, model_risk=route_risk, safety=safety)
         route = Route.objects.create(
             route_plan=plan,
             name=f"{school.school_code}-AM-{route_n:02d}",
@@ -441,6 +455,7 @@ def persist_solution(**kwargs) -> RoutePlan:
             risk_factors=factors,
             student_count=len(students),
             wheelchair_count=wc,
+            safety_context=safety,
         )
         # persist stops
         load = 0
@@ -547,8 +562,78 @@ def persist_solution(**kwargs) -> RoutePlan:
     return plan
 
 
-def explain_risk(mode, on_time, ride, policy, slack, wc, dist, model_risk=None) -> list[dict]:
+def _node_latlng(node, depot, school, stop_list, school_i) -> tuple[float, float]:
+    if node == 0:
+        return (float(depot.latitude), float(depot.longitude))
+    if node == school_i:
+        return (float(school.latitude), float(school.longitude))
+    stop = stop_list[node - 1]["stop"]
+    return (float(stop.latitude), float(stop.longitude))
+
+
+def route_safety_context(path_points: list[tuple[float, float]]) -> dict:
+    """Hazard overlap for a stop-to-stop path, from the real Louisville geodata layers.
+
+    Uses straight-line legs between stops (consistent with the rest of this
+    module's Haversine-based scoring) rather than the OSRM/Google street
+    polyline, so it has no external-network dependency. Degrades to neutral
+    values when `import_louisville_open_data` hasn't been run yet.
+    """
+    from django.utils import timezone
+
+    from apps.geodata import services as geo_services
+
+    hi = geo_services.high_injury_overlap(path_points)
+    signal_crossings = sum(geo_services.signal_count_near(lat, lng, radius_m=90) for lat, lng in path_points)
+    construction = geo_services.active_construction_near(path_points, timezone.now())
+    return {
+        "high_injury_km": hi["km"],
+        "high_injury_corridors": hi["corridors"],
+        "high_injury_worst_priority": hi["worst_priority"],
+        "signal_crossings": signal_crossings,
+        "active_construction": construction,
+        "snow_route_coverage": geo_services.snow_route_coverage(path_points),
+    }
+
+
+def explain_risk(mode, on_time, ride, policy, slack, wc, dist, model_risk=None, safety=None) -> list[dict]:
     factors = []
+    safety = safety or {}
+    if safety.get("high_injury_km", 0) > 0.15:
+        corridors = ", ".join(safety.get("high_injury_corridors") or [])
+        factors.append(
+            {
+                "code": "HIGH_INJURY_CORRIDOR",
+                "text": (
+                    f"This route runs {safety['high_injury_km']:.1f} km along Louisville's Vision Zero "
+                    f"high-injury network{' (' + corridors + ')' if corridors else ''}, where a "
+                    "disproportionate share of serious crashes occur."
+                ),
+            }
+        )
+    if safety.get("active_construction"):
+        sites = safety["active_construction"]
+        first = sites[0]
+        extra = f" and {len(sites) - 1} more" if len(sites) > 1 else ""
+        factors.append(
+            {
+                "code": "ACTIVE_CONSTRUCTION",
+                "text": (
+                    f"An active right-of-way permit near {first.get('street_address') or 'this route'} "
+                    f"({first.get('work_type') or 'construction'}){extra} may cause delays or detours."
+                ),
+            }
+        )
+    if safety.get("snow_route_coverage", 1.0) < 0.5:
+        factors.append(
+            {
+                "code": "LOW_SNOW_PRIORITY",
+                "text": (
+                    "Most of this route is off Public Works' priority snow/salt routes, so winter "
+                    "mornings are riskier than the dry-pavement ETA suggests."
+                ),
+            }
+        )
     if model_risk is not None and model_risk > 0.4:
         factors.append(
             {

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.operations",
     "apps.notifications",
     "apps.audit",
+    "apps.geodata",
 ]
 
 MIDDLEWARE = [
@@ -182,6 +183,10 @@ GOOGLE_MAPS_API_KEY = env("GOOGLE_MAPS_API_KEY", default="")
 # cell / on outage). Off by default for offline-safe local runs; the deploy
 # compose enables it.
 USE_STREET_MATRIX = env("USE_STREET_MATRIX", default=False)
+# Live weather (Open-Meteo, free/keyless) overlay for the travel-time models.
+# Off by default so tests and offline dev stay hermetic; see
+# apps.machine_learning.services.weather.
+USE_LIVE_WEATHER = env("USE_LIVE_WEATHER", default=False)
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = FILE_UPLOAD_MAX_MEMORY_SIZE

@@ -34,27 +34,41 @@ def _combine(service_date, t):
 
 
 def _live_leg_features(trip: Trip, stops: list, wc_by_stop: dict, now) -> list[dict]:
-    """Build model features for each remaining leg from persisted route data."""
+    """Build model features for each remaining leg from persisted route data.
+
+    road_category/urban_density/traffic_severity/rain/weather_severity use the
+    real Louisville geodata + weather layers when loaded (apps.geodata,
+    apps.machine_learning.services.weather); each falls back to the original
+    heuristic when a lookup finds nothing, so this is a no-op until
+    `import_louisville_open_data` has been run.
+    """
+    from apps.geodata import services as geo_services
+    from apps.machine_learning.services import weather as weather_service
+
     total = len(stops)
+    rush = 0.45 if now.hour in {7, 8, 15, 16} else 0.2
+    wx = weather_service.current_conditions(float(stops[0].latitude), float(stops[0].longitude)) if stops else {}
     feats = []
     for pos, stop in enumerate(stops):
         dist = float(stop.distance_from_previous_km or 0)
         planned = float(stop.expected_seconds_from_previous or 0) or max(30, dist / 28 * 3600)
+        road = geo_services.road_context_for(float(stop.latitude), float(stop.longitude))
+        signals = geo_services.signal_count_near(float(stop.latitude), float(stop.longitude))
         feats.append(
             {
                 "distance_km": dist,
                 "planned_duration_s": planned,
                 "departure_hour": now.hour,
                 "day_of_week": min(now.weekday(), 4),  # models trained Mon-Fri only
-                "road_category": 1 if dist > 2.5 else 0,
-                "traffic_severity": 0.45 if now.hour in {7, 8, 15, 16} else 0.2,
-                "rain": 0,
-                "weather_severity": 0.15,
+                "road_category": road["road_category"] if road else (1 if dist > 2.5 else 0),
+                "traffic_severity": min(1.0, rush + 0.05 * signals),
+                "rain": wx.get("rain", 0),
+                "weather_severity": wx.get("weather_severity", 0.15),
                 "passenger_load": stop.cumulative_load or 0,
                 "students_boarding": stop.student_count or 0,
                 "wheelchair_boardings": wc_by_stop.get(str(stop.id), 0),
                 "remaining_stops": max(0, total - pos - 1),
-                "urban_density": 0.6,
+                "urban_density": road["urban_density"] if road else 0.6,
                 "historical_delay_s": trip.current_delay_seconds,
                 "segment_position": stop.sequence / max(total, 1),
             }

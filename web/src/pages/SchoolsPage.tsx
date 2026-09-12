@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { MapPinCheck, Plus, Search } from "lucide-react";
 import { api, errorMessage } from "../api/client";
 import { RouteMap } from "../components/maps/RouteMap";
 import { LoadingBlock } from "../components/ui/LoadingBlock";
 import { PageHeader } from "../components/ui/PageHeader";
+import type { PublicSchoolSite } from "../types";
+
+const LEVEL_TO_TYPE: Record<string, string> = { E: "elementary", M: "middle", H: "high" };
 
 export function SchoolsPage() {
   const qc = useQueryClient();
@@ -126,6 +129,25 @@ function SchoolForm({
     morning_bell_time: "08:00",
     dismissal_time: "15:00",
   });
+  const [lookup, setLookup] = useState("");
+  const { data: matches } = useQuery({
+    queryKey: ["geodata", "schools", lookup],
+    enabled: lookup.trim().length >= 2,
+    queryFn: async () => (await api.get("/geodata/schools/", { params: { search: lookup, page_size: 8 } })).data,
+  });
+
+  function applyRealSchool(s: PublicSchoolSite) {
+    setForm({
+      ...form,
+      name: s.name,
+      address: [s.address, s.city, s.state, s.zip_code].filter(Boolean).join(", "),
+      latitude: String(s.latitude),
+      longitude: String(s.longitude),
+      school_type: LEVEL_TO_TYPE[s.level] || form.school_type,
+    });
+    setLookup("");
+  }
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal>
       <form
@@ -137,7 +159,43 @@ function SchoolForm({
       >
         <h2 className="text-xl font-bold">New school</h2>
         {error && <p className="text-bad text-sm bg-red-50 rounded-xl p-3">{error}</p>}
-        <div className="grid gap-3">
+
+        <div className="relative">
+          <label className="label" htmlFor="school-lookup">
+            <MapPinCheck size={14} className="inline -mt-0.5 mr-1 text-good" />
+            Find a real Jefferson County school (optional)
+          </label>
+          <input
+            id="school-lookup"
+            className="input"
+            placeholder="Start typing a school name…"
+            value={lookup}
+            onChange={(e) => setLookup(e.target.value)}
+            autoComplete="off"
+          />
+          {matches?.results?.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full bg-white border border-line rounded-xl shadow-lg max-h-56 overflow-y-auto">
+              {matches.results.map((s: PublicSchoolSite) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-canvas"
+                    onClick={() => applyRealSchool(s)}
+                  >
+                    <div className="font-semibold">{s.name}</div>
+                    <div className="text-xs text-muted">{s.address}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted mt-1">
+            Fills in name, address, and coordinates from Louisville Metro/LOJIC open data. Bell times and school code
+            still need your input.
+          </p>
+        </div>
+
+        <div className="grid gap-3 mt-3">
           {Object.entries(form).map(([k, v]) => (
             <div key={k}>
               <label className="label" htmlFor={k}>

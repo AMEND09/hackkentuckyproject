@@ -1,17 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Navigation } from "lucide-react";
+import { Construction, Navigation, ShieldCheck } from "lucide-react";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { RouteMap } from "../components/maps/RouteMap";
 import { LoadingBlock } from "../components/ui/LoadingBlock";
+import { RiskFactorList, SAFETY_FACTOR_CODES } from "../components/ui/RiskFactorList";
+import { useHazardLayers } from "../hooks/useHazardLayers";
 
 export function TripDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const isGuardian = user?.role === "guardian";
   const qc = useQueryClient();
+  const [showCorridors, setShowCorridors] = useState(true);
+  const [showConstruction, setShowConstruction] = useState(true);
   const { data: trip } = useQuery({
     queryKey: ["trip", id],
     queryFn: async () => (await api.get(`/trips/${id}/`)).data,
@@ -21,6 +26,11 @@ export function TripDetailPage() {
     mutationFn: () => api.post("/incidents/", { trip: id, type: "traffic", severity: "medium", description: "Dispatcher-noted delay (demo)." }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["trip", id] }),
   });
+  const stopPoints = (trip?.stops || []).map((s: { latitude: string; longitude: string }) => ({
+    lat: Number(s.latitude),
+    lng: Number(s.longitude),
+  }));
+  const { hazardLines, hazardPoints } = useHazardLayers(stopPoints, { showCorridors, showConstruction });
   if (!trip) return <LoadingBlock rows={3} />;
   const stops = trip.stops || [];
   const pos = trip.last_position;
@@ -41,8 +51,31 @@ export function TripDetailPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="px-5 pt-5 pb-2 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-bold text-ink">Route map</h2>
+          <div className="flex items-center gap-4 text-xs font-medium text-slate">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={showCorridors}
+                onChange={(e) => setShowCorridors(e.target.checked)}
+              />
+              <ShieldCheck size={14} className="text-bad" /> Vision Zero corridors
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                className="rounded"
+                checked={showConstruction}
+                onChange={(e) => setShowConstruction(e.target.checked)}
+              />
+              <Construction size={14} className="text-warn" /> Active construction
+            </label>
+          </div>
+        </div>
         <RouteMap
-          className="h-96 rounded-none border-0"
+          className="h-96 rounded-none border-0 border-t border-navy/[0.06]"
           points={[
             ...stops.map((s: { id: string; latitude: string; longitude: string; name: string }) => ({
               id: s.id,
@@ -54,6 +87,7 @@ export function TripDetailPage() {
             ...(pos
               ? [{ id: "bus", lat: Number(pos.latitude), lng: Number(pos.longitude), kind: "bus" as const, label: "Bus" }]
               : []),
+            ...hazardPoints,
           ]}
           lines={[
             {
@@ -64,9 +98,25 @@ export function TripDetailPage() {
                 ? trip.path
                 : stops.map((s: { longitude: string; latitude: string }) => [Number(s.longitude), Number(s.latitude)] as [number, number])),
             },
+            ...hazardLines,
           ]}
         />
       </div>
+
+      {isGuardian ? (
+        <div className="card card-body">
+          <h2 className="section-title flex items-center gap-2">
+            <ShieldCheck size={16} className="text-good" /> Safety notes
+          </h2>
+          <p className="text-xs text-muted mb-2">From Louisville Metro / LOJIC open data — not a live traffic feed.</p>
+          <RiskFactorList factors={trip.route_risk_factors} onlyCodes={SAFETY_FACTOR_CODES} />
+        </div>
+      ) : (
+        <div className="card card-body">
+          <h2 className="section-title">Risk factors</h2>
+          <RiskFactorList factors={trip.route_risk_factors} />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         <div className="card card-body">
